@@ -233,6 +233,28 @@ Tipo novo: `analytics_basis` = `accrual` (competência) | `cash` (caixa). Valor 
 **Correção**: `create_card_purchase` recriada — a 1ª compra parcelada num cartão sem fatura no ciclo falhava
 (a fatura criada dentro de um subselect não era visível no mesmo comando).
 
+### Fase 4 — metas e projeção (migration 0008)
+| Item | O que é |
+|---|---|
+| `goals` (novos campos) | `priority` (1 alta · 2 média · 3 baixa), `initial_cents` (já guardado ao criar), `reserve_account_id` (conta de reserva/caixinha, opcional), `annual_return_bps` (rendimento estimado em pontos-base), `notes`. Status ganhou `paused`. |
+| `goal_contributions` (novos campos) | Valor positivo = aporte, negativo = retirada (**exige motivo** em `note`). `is_planned` (previsto), `recurrence_id`/`recurrence_date` (aporte planejado, único por data), `updated_at`. |
+| `recurrences.goal_id` | Recorrência de **aporte planejado**: o gerador cria aportes previstos em `goal_contributions` em vez de lançamentos. |
+| `goal_summaries` (view, `security_invoker`) | Guardado, depositado, retirado, previsto, nº de aportes, último aporte e o plano ativo de cada meta. |
+
+**Regras no banco**: `validate_goal_contribution` (meta arquivada não recebe; retirada não passa do
+guardado), `sync_goal_status` (concluída/ativa automática), auditoria em metas e aportes.
+**Saldos**: `account_balances` e `analytics_position` descontam o aporte confirmado da conta de origem e somam
+na conta de reserva (ADR-0016).
+
+**Motor de projeção** (ADR-0017): `private.projected_occurrences(ws, de, até)` → ocorrências virtuais das
+recorrências ativas após o horizonte gerado; `analytics_entries` ganhou `p_include_projected` (padrão true) e as
+colunas `is_projected`/`is_fixed`; `analytics_position` ganhou `planned_savings_cents`.
+
+| Função nova | Devolve |
+|---|---|
+| `analytics_savings(ws, de, até, membro?, conta?)` | Guardado no período (aportes − retiradas), depósitos, retiradas e previstos. |
+| `planning_capacity_inputs(ws, meses = 6)` | Por mês (N fechados + próximo projetado): receitas fixas/eventuais, despesas fixas/variáveis e guardado. O cálculo final é puro em TS (`savingsCapacity`). |
+
 ### Ciclo de vida da conta (migration 0005)
 `transfer_workspace_ownership`, `get_account_deletion_blockers`, `delete_my_account` (ADR-0013).
 

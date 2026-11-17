@@ -6,16 +6,17 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178c6?logo=typescript&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-Postgres%2017%20%2B%20RLS-3ecf8e?logo=supabase&logoColor=white)
 ![Tailwind](https://img.shields.io/badge/Tailwind-4.3-38bdf8?logo=tailwindcss&logoColor=white)
-![Status](https://img.shields.io/badge/status-Fase%203%20conclu%C3%ADda-5eead4)
+![Status](https://img.shields.io/badge/status-Fase%204%20conclu%C3%ADda-5eead4)
 ![Licença](https://img.shields.io/badge/licen%C3%A7a-todos%20os%20direitos%20reservados-lightgrey)
 
-Controle de receitas, despesas, cartões de crédito, faturas, parcelamentos e contas fixas — para uma
+Controle de receitas, despesas, cartões de crédito, faturas, parcelamentos, contas fixas e **metas** — para uma
 pessoa ou para a família inteira, com os dados de cada um **isolados no banco de dados**. Pensado para
 o celular (lançar um gasto leva 3 toques) e com **custo zero** de infraestrutura.
 
 | Desktop | iPhone |
 |---|---|
 | ![Painel no desktop](docs/images/desktop-painel.png) | ![Painel no iPhone](docs/images/iphone-painel.png) |
+| ![Meta no desktop](docs/images/desktop-meta.png) | ![Metas no iPhone](docs/images/iphone-metas.png) |
 | ![Lançamentos no desktop](docs/images/desktop-lancamentos.png) | ![Lançamentos no iPhone](docs/images/iphone-lancamentos.png) |
 | ![Fatura no desktop](docs/images/desktop-fatura.png) | ![Lançamento rápido no iPhone](docs/images/iphone-lancamento-rapido.png) |
 
@@ -26,6 +27,10 @@ o celular (lançar um gasto leva 3 toques) e com **custo zero** de infraestrutur
 |---|---|---|
 | Painel | ![](docs/images/desktop-painel.png) | ![](docs/images/iphone-painel.png) |
 | Painel (visão caixa, ano) | ![](docs/images/desktop-painel-caixa.png) | ![](docs/images/iphone-painel-caixa.png) |
+| Metas | ![](docs/images/desktop-metas.png) | ![](docs/images/iphone-metas.png) |
+| Meta (detalhe + simulador) | ![](docs/images/desktop-meta.png) | ![](docs/images/iphone-meta.png) |
+| Planejamento | ![](docs/images/desktop-planejamento.png) | ![](docs/images/iphone-planejamento.png) |
+| Guardar para meta | ![](docs/images/desktop-guardar-meta.png) | ![](docs/images/iphone-guardar-meta.png) |
 | Cartões | ![](docs/images/desktop-cartoes.png) | ![](docs/images/iphone-cartoes.png) |
 | Fatura | ![](docs/images/desktop-fatura.png) | ![](docs/images/iphone-fatura.png) |
 | Contas | ![](docs/images/desktop-contas.png) | ![](docs/images/iphone-contas.png) |
@@ -126,8 +131,24 @@ alternando entre eles com um toque.
 - ✅ Acessível: cada gráfico vira tabela com um toque; Lighthouse acessibilidade 100.
 - ✅ Seed com **12 meses** de histórico (freelas, 13º, um mês atípico) e um 2º membro na família.
 
+**Metas e projeções (Fase 4)**
+- ✅ **Metas** individuais ou da família (com quem guardou quanto): valor-alvo, prazo opcional, prioridade,
+  valor já guardado, conta de reserva ("caixinha"), rendimento estimado, pausar/arquivar; concluída sozinha ao
+  atingir o alvo, com uma celebração.
+- ✅ **Guardar em 3 toques** (+ → "Guardar para meta" → valor → Guardar) e **retirar com motivo**; histórico completo.
+- ✅ **Guardar não é despesa**: o dinheiro sai da conta e vai para a reserva da meta; o painel mostra
+  "Guardado em metas" separado e a taxa de economia diz quanto foi para metas.
+- ✅ **Aporte planejado** ("R$ 500 todo dia 5") que aparece como previsto e você confirma.
+- ✅ Quanto falta, **quanto guardar por mês para o prazo** (recalculado a cada aporte), **quando você chega no
+  ritmo atual** (média ponderada dos últimos meses) e se está adiantado, no ritmo ou atrasado.
+- ✅ **Simulador "e se"** (aporte, prazo, alvo, rendimento) e "reduzindo X% em Restaurantes você antecipa N meses".
+- ✅ **Planejamento**: sobra mensal realista, quanto já está comprometido, alerta quando as metas não cabem na
+  renda e sugestão de como dividir a sobra.
+- ✅ **Projeção de até 36 meses** a partir das regras (recorrências, parcelas, faturas) — sem gravar nada.
+- ✅ Lista de lançamentos na **visão caixa** (compras pelo vencimento da fatura) e com as projeções dos meses
+  futuros: soma exatamente o que o painel mostra.
+
 ### 🔜 Planejado (ver [roadmap](docs/roadmap.md))
-- 🔜 **Fase 4** – Metas e projeções ("quanto guardar por mês", "em quanto tempo chego lá").
 - 🔜 **Fase 5** – IA que entende mensagens ("gastei 50 no Uber no crédito do Nubank").
 - 🔜 **Fase 6** – Bot no WhatsApp (API oficial) e Telegram.
 - 🔜 **Fase 7** – Importação de extratos CSV/OFX e leitura de prints de notificação.
@@ -251,7 +272,7 @@ erDiagram
 | `invoice_payments` | Pagamentos de fatura (saem da conta; não são despesa). |
 | `categories` | Categorias e subcategorias por espaço. |
 | `audit_log` | Quem criou/alterou/excluiu o quê e quando. |
-| `goals`, `goal_contributions` | Metas e aportes (Fase 4, tabelas já criadas). |
+| `goals`, `goal_contributions` | Metas e aportes/retiradas (Fase 4); aporte planejado = `recurrences.goal_id`; resumo calculado em `goal_summaries`. |
 | `channel_links`, `bot_messages`, … | Vínculo de WhatsApp/Telegram (Fases 5–6, tabelas já criadas). |
 
 ## 6. Segurança
@@ -266,7 +287,7 @@ erDiagram
 - **Reautenticação**: trocar e-mail e excluir a conta pedem a senha atual.
 - **Agregados do painel** em funções `SECURITY INVOKER`: rodam com a sessão de quem pede, então a RLS
   vale também para somas e médias — uma família nunca vê números de outra (testado).
-- **Testes de isolamento**: 164 asserções pgTAP (inclui "estranho não vê nada", "membro não promove a si
+- **Testes de isolamento**: 206 asserções pgTAP (inclui "estranho não vê nada", "membro não promove a si
   mesmo", "não dá para mover lançamento de espaço").
 
 **Matriz de permissões**
@@ -311,6 +332,7 @@ segredos nelas. Arquivos que leem segredos começam com `import "server-only"`. 
 │   │   ├── (app)/             # Telas logadas: painel, lançamentos, cartões, contas, recorrências,
 │   │   │   │                  #   categorias, família, configurações, mais
 │   │   │   ├── painel/        #   Dashboard (blocos com Suspense + load.ts com cache)
+│   │   │   ├── metas/         #   Metas e detalhe (/metas/[id]); planejamento/ = sobra e distribuição
 │   │   │   └── _actions/      #   Server Actions (lançamentos, preferências)
 │   │   ├── auth/confirm/      # Destino dos links de e-mail (token_hash)
 │   │   ├── layout.tsx         # Fontes, tema, metadados PWA/iOS
@@ -318,6 +340,7 @@ segredos nelas. Arquivos que leem segredos começam com `import "server-only"`. 
 │   ├── components/
 │   │   ├── app-shell/         # Sidebar, barra inferior, seletor de espaço, menu do usuário
 │   │   ├── dashboard/         # KPIs, gráficos (HTML/SVG), filtros, insights, listas
+│   │   ├── goals/             # Anel, cartão, gráfico, simulador, guardar/retirar, celebração
 │   │   ├── privacy/           # Ocultar valores (ícone de olho)
 │   │   ├── ledger/            # Lançamento rápido (formulário sob demanda), listas, formulários
 │   │   ├── forms/             # Campos acessíveis e botão de envio
@@ -325,6 +348,7 @@ segredos nelas. Arquivos que leem segredos começam com `import "server-only"`. 
 │   ├── lib/
 │   │   ├── domain/            # Regras puras: fatura, recorrência, competência × caixa (+ testes)
 │   │   ├── analytics/         # Período, variação, categorias, insights do painel (+ testes)
+│   │   ├── goals/             # math.ts (cálculos puros) + service.ts (API interna p/ telas, IA e bot)
 │   │   ├── data/              # Consultas server-only (ledger.ts, analytics.ts)
 │   │   ├── supabase/          # Clientes (servidor/proxy), tipos gerados, retry de relógio
 │   │   ├── validation/        # Schemas Zod
@@ -332,7 +356,7 @@ segredos nelas. Arquivos que leem segredos começam com `import "server-only"`. 
 │   │   └── …                  # sessão, erros, contexto do espaço
 │   └── proxy.ts               # Antigo middleware: sessão + redirecionamentos
 ├── supabase/
-│   ├── migrations/            # 0001–0007 (schema, RLS, funções, pg_cron, analytics)
+│   ├── migrations/            # 0001–0008 (schema, RLS, funções, pg_cron, analytics, metas + projeção)
 │   ├── tests/database/        # pgTAP
 │   ├── templates/             # E-mails em pt-BR
 │   ├── seed.sql               # Usuários de teste + 12 meses de demonstração (só local)
@@ -452,9 +476,9 @@ pnpm dev                 # http://localhost:3000
 
 | Tipo | Comando | Cobre |
 |---|---|---|
-| Unitários (Vitest) | `pnpm test` | Centavos (`parseBRL`, `formatBRL`, parcelas), datas em São Paulo (inclusive perto da meia-noite e na virada do ano), regra da fatura, recorrências, competência × caixa, período do painel, variação e cor semântica, categorias, insights, redirecionamento seguro, retry de relógio — **103 testes** |
-| Banco (pgTAP) | `pnpm test:db` | Isolamento entre usuários e famílias, papéis, convites, posse/exclusão de conta, faturas, parcelas (ano seguinte, centavos ímpares, fevereiro), recorrências idempotentes, saldos, pagamentos, limite, categorias, auditoria; painel: competência × caixa (somam igual no período fechado), mês vazio, só previstos, parcelas cruzando o ano, fatura paga parcialmente, vários membros, saldo projetado e RLS entre famílias — **164 asserções** |
-| E2E (Playwright) | `pnpm test:e2e` | Login/validações, cadastro → confirmação → troca de e-mail → exclusão, lançamento em 3 toques, parcelado, desfazer, pagar fatura, recorrência, categoria com reatribuição; painel (filtros na URL + voltar, visões, ocultar valores, tabela, vazio, clique → lista); regressão da 1ª compra parcelada; checagens iOS |
+| Unitários (Vitest) | `pnpm test` | Centavos (`parseBRL`, `formatBRL`, parcelas), datas em São Paulo (inclusive perto da meia-noite e na virada do ano), regra da fatura, recorrências, competência × caixa, período do painel, variação e cor semântica, categorias, insights, redirecionamento seguro, retry de relógio, metas (mensal necessário com juros, ritmo ponderado, estimativa, capacidade, distribuição, simulador, corte por categoria), motor de projeção — **137 testes** |
+| Banco (pgTAP) | `pnpm test:db` | Isolamento entre usuários e famílias, papéis, convites, posse/exclusão de conta, faturas, parcelas (ano seguinte, centavos ímpares, fevereiro), recorrências idempotentes, saldos, pagamentos, limite, categorias, auditoria; painel: competência × caixa (somam igual no período fechado), mês vazio, só previstos, parcelas cruzando o ano, fatura paga parcialmente, vários membros, saldo projetado e RLS entre famílias; metas: aporte não é despesa (nada contado duas vezes), retirada com motivo e limite, conclusão automática, aporte planejado idempotente, projeção (mês atual = Fase 3, 36 meses, nada gravado) e RLS — **206 asserções** |
+| E2E (Playwright) | `pnpm test:e2e` | Login/validações, cadastro → confirmação → troca de e-mail → exclusão, lançamento em 3 toques, parcelado, desfazer, pagar fatura, recorrência, categoria com reatribuição; painel (filtros na URL + voltar, visões, ocultar valores, tabela, vazio, clique → lista); regressão da 1ª compra parcelada; metas (3 toques, retirada com motivo, conclusão e celebração, simulador, planejamento), lista na visão caixa e projeções, campo de valor; checagens iOS |
 | iOS/mobile | `pnpm test:e2e:ios` | Sem rolagem horizontal, barra inferior fixa com alvos ≥ 44 px, safe area, fonte ≥ 16 px (sem zoom do iOS), `inputmode="decimal"`, `100dvh`, meta tags PWA e `apple-touch-icon`, folha de lançamento cabe na tela |
 
 No **CI** (GitHub Actions) tudo isso roda a cada push na `main` e em cada pull request.
@@ -585,6 +609,19 @@ que entraram − transferências que saíram − pagamentos de fatura. Lançamen
 **Saldo projetado.** Saldo de hoje nas contas + receitas previstas − despesas previstas (fora do cartão) −
 o que falta pagar das faturas que vencem até o fim do mês. O cartão entra só pela fatura, nunca duas vezes.
 
+**Metas: guardar não é gastar.** Quando você guarda R$ 300 para a viagem, o dinheiro **sai da conta** (o
+saldo disponível diminui) e vai para a **reserva da meta** (uma conta como a Poupança, ou a "caixinha" da própria
+meta). Isso **não entra em despesas** — senão o mês pareceria mais caro justamente quando você economiza.
+O painel mostra "Guardado em metas" separado, e a taxa de economia diz quanto da renda foi para metas.
+
+**Quanto guardar por mês e quando chego lá.** "Por mês até o prazo" = o que falta ÷ meses até o prazo (com
+rendimento, a conta usa juros compostos). "Chega em" usa o **aporte planejado** (se houver) ou o seu **ritmo
+real**: a média dos últimos 6 meses fechados, com mais peso nos mais recentes (mês sem aporte conta como zero).
+Se essa data passar do prazo, a meta fica "Atrasada"; antes, "Adiantada".
+
+**Projeção.** Meses futuros são calculados a partir das **regras** (recorrências ativas, parcelas e faturas), até
+36 meses, sem criar lançamentos no banco. O mês atual é sempre igual ao que já está lançado.
+
 **Arredondamento e dinheiro.** Tudo é guardado em **centavos inteiros**, nunca com casas decimais "quebradas"
 de computador (0,1 + 0,2 ≠ 0,3 em ponto flutuante). Datas usam sempre o horário de São Paulo.
 
@@ -621,15 +658,14 @@ de computador (0,1 + 0,2 ≠ 0,3 em ponto flutuante). Datas usam sempre o horár
 
 ## 18. Roadmap, limitações, custos, changelog e licença
 
-**Roadmap**: Fases 0–3 ✅ · Fase 4 (metas) ⏭️ · Fases 5–8 planejadas — detalhes em
+**Roadmap**: Fases 0–4 ✅ · Fase 5 (IA) ⏭️ · Fases 6–8 planejadas — detalhes em
 [`docs/roadmap.md`](docs/roadmap.md).
 
 **Limitações conhecidas**
 - Validação em iOS Simulator e iPhone físico ainda pendente (a emulação WebKit cobre o layout).
-- Progresso das metas no painel chega com as metas (Fase 4).
-- Projeção de **meses futuros** só enxerga recorrências já geradas (o banco gera até o fim do mês atual);
-  para o mês atual ela é completa. Comparação com a média de 3 meses só na visão por mês.
-- A lista de lançamentos filtra por mês da compra; aberta a partir da visão caixa, ela mostra as compras pela data da compra.
+- Comparação com a média de 3 meses só na visão por mês.
+- Meta com imagem própria (upload) ficou para depois: hoje é ícone + cor (evita custo/armazenamento agora).
+- O ritmo de uma meta usa meses fechados: aportes do mês atual mudam "falta" e "por mês", e entram no ritmo no mês seguinte.
 - Sem modo offline ainda (service worker na Fase 8).
 - Trilha de auditoria sem política de retenção (Fase 8).
 - Estornos no cartão e importação de extratos: Fase 7.
@@ -646,6 +682,11 @@ de computador (0,1 + 0,2 ≠ 0,3 em ponto flutuante). Datas usam sempre o horár
 | IA (Fase 5) | Gemini/Groq com cotas gratuitas que mudam com frequência | Monitorar limites |
 
 **Changelog resumido**
+- **Fase 4** — metas (individuais/família) com aportes, retiradas, aporte planejado, conclusão e celebração;
+  cálculos de mensal necessário, ritmo ponderado, data estimada e status; simulador "e se" e corte por categoria;
+  Planejamento (sobra, compromissos, inviabilidade, distribuição); "guardado em metas" no painel; motor de
+  projeção por regras (36 meses); lista na visão caixa e com projeções; API interna para IA/bot; correção do
+  campo de valor ao tocar no meio.
 - **Fase 3** — painel com KPIs e variação semântica, saldo projetado, visões competência × caixa,
   realizado × previsto, gráficos (categorias, 12 meses, média, limites), vencimentos, maiores gastos, por
   membro e por meio; insights por regra; filtros na URL; ocultar valores; tabela alternativa; camada

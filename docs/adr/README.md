@@ -20,3 +20,5 @@ Uma ADR aceita não é editada; se a decisão mudar, crie outra que a substitua.
 | [0013](0013-ciclo-de-vida-da-conta.md) | Troca de e-mail, transferência de posse e exclusão de conta | Aceita |
 | [0014](0014-visoes-competencia-e-caixa.md) | Visões de período: competência (padrão) e caixa/por vencimento | Aceita |
 | [0015](0015-camada-analitica-e-graficos.md) | Camada analítica no banco (SECURITY INVOKER) e gráficos sem biblioteca | Aceita |
+| [0016](0016-aporte-em-meta-nao-e-despesa.md) | Aporte em meta não é despesa (reserva/caixinha, retirada com motivo) | Aceita |
+| [0017](0017-motor-de-projecao.md) | Motor de projeção a partir das regras (até 36 meses, sem gravar) | Aceita |

@@ -84,14 +84,20 @@ Legenda de fase: **F1** = Fundação (feito), **F2…F8** = fases futuras.
 | RF-34 | Cada gráfico tem tabela alternativa; estados vazios e skeletons. |
 | RF-35 | Progresso das metas no painel → **Fase 4**. |
 
-### 3.4 Metas e projeções (F4)
+### 3.4 Metas e projeções (F4 ✅)
 | ID | Requisito |
 |---|---|
-| RF-40 | Cadastrar meta (nome, valor-alvo, prazo opcional, ícone/cor). |
-| RF-41 | Registrar aportes variáveis (e resgates) por meta. |
-| RF-42 | Calcular: (a) valor mensal necessário para atingir no prazo; (b) prazo estimado dado um aporte mensal; considerando renda, despesas fixas e média de gastos variáveis (RN-20…23). |
-| RF-43 | Recalcular a projeção a cada aporte. |
-| RF-44 | Sugestões da IA ("reduzindo 15% em delivery, você antecipa a viagem em 2 meses"). |
+| RF-40 | Meta: nome, ícone e cor, valor-alvo, prazo opcional, prioridade (alta/média/baixa), valor inicial já guardado, conta de reserva opcional, rendimento anual estimado opcional, observação. Status: ativa, pausada, concluída (automática), arquivada. |
+| RF-40a | Metas do espaço individual (só o dono vê) ou da família (todos veem e guardam), com a contribuição de cada membro. |
+| RF-41 | Aportes de qualquer valor, quando quiser; retiradas com motivo; histórico completo (excluir com permissão). |
+| RF-41a | Aporte planejado recorrente (ex.: R$ 500 todo dia 5) que aparece como previsto e é confirmável. |
+| RF-42 | Cálculos: quanto falta, % concluído, mensal necessário para o prazo (recalculado a cada aporte), data estimada pelo plano ou pelo ritmo real, status de ritmo (adiantada/no ritmo/atrasada). |
+| RF-42a | Capacidade de poupança (renda − fixas − variáveis), quanto já está comprometido com metas, sugestão de distribuição e alerta de inviabilidade. |
+| RF-43 | Simulador "e se" (aporte, prazo, alvo, rendimento) sem salvar; cenário "reduzir X% na categoria Y antecipa N meses". |
+| RF-43a | Guardar em até 3 toques (botão + global ou botão da meta); celebração ao concluir. |
+| RF-43b | Painel: "Guardado em metas" separado de despesas, taxa de economia com aportes, widget de metas; tela "Planejamento". |
+| RF-44 | Sugestões da IA → **Fase 5** (o cenário por categoria já existe, calculado por regra). |
+| RF-45 | API interna de metas reutilizável pela IA e pelo bot (docs/api-interna.md). |
 
 ### 3.5 Lançamento por mensagem — IA + WhatsApp/Telegram (F5–F6)
 | ID | Requisito |
@@ -176,11 +182,57 @@ Legenda de fase: **F1** = Fundação (feito), **F2…F8** = fases futuras.
 - **RN-19** Categoria em uso não pode ser excluída sem reatribuição (garantido por FK `RESTRICT`).
   Subcategoria tem o mesmo tipo da mãe e só um nível.
 
-### Metas e projeções
-- **RN-20** Saldo da meta = soma dos aportes (resgates são negativos). Meta atingida quando saldo ≥ alvo.
-- **RN-21** Valor mensal necessário = ⌈(alvo − saldo) / meses restantes⌉, com meses restantes ≥ 1.
-- **RN-22** Prazo estimado com aporte mensal *A* = ⌈(alvo − saldo) / A⌉ meses.
-- **RN-23** Capacidade de poupança sugerida = renda fixa − despesas fixas − média de gastos variáveis dos últimos 3 meses (sem o mês corrente).
+### Metas e projeções (Fase 4) — ver ADR-0016 e ADR-0017
+Convenção de calendário: um aporte por mês; o **mês 1 é o próximo mês**. Prazo em nov/2028 visto em
+nov/2026 = **24 meses**. Prazo no mês atual = 0 meses ("falta tudo agora"); prazo no passado = vencido.
+- **RN-70** Aporte em meta **não é receita nem despesa**: sai da conta de origem e entra na conta de
+  reserva da meta (ou fica na "caixinha" da meta, se não houver conta). Saldos refletem só os confirmados.
+- **RN-71** "Guardado no período" = aportes − retiradas **confirmados** no período. O valor inicial já
+  guardado não entra (não é movimento). Taxa de economia = (receitas − despesas) ÷ receitas; o painel mostra
+  quanto dela foi para metas.
+- **RN-72** Guardado da meta = valor inicial + aportes − retiradas confirmados. % = guardado ÷ alvo
+  (limitado a 100% na barra); excedente é mostrado ("atingida com R$ X a mais").
+- **RN-73** Retirada exige motivo e não pode deixar a meta negativa ("retirada que zera" é permitida).
+- **RN-74** Atingir o alvo conclui a meta automaticamente; retirada ou aumento do alvo que deixe abaixo
+  volta para ativa. Pausada/arquivada só mudam pela pessoa. Arquivada não recebe aportes.
+- **RN-75** Na família, todos os membros veem e guardam; contribuição por membro = soma dos aportes de
+  cada um ("quem guardou" ou, se vazio, quem registrou). Excluir aporte: quem registrou ou admin.
+- **RN-76** Aporte planejado = recorrência com `goal_id` (mensal/semanal/anual; dia 31 → último dia). Gera
+  aportes **previstos** idempotentes; confirmar com ✓ ou automático. Um plano ativo por meta (trocar o plano
+  encerra o anterior e apaga os previstos futuros dele).
+- **RN-77** Previsto não conta no guardado nem nos saldos; entra só na projeção.
+- **RN-78** Mensal necessário (com prazo): sem rendimento = ⌈restante ÷ n⌉; com rendimento anual *a*
+  (taxa mensal i = (1+a)^(1/12) − 1): PMT = (alvo − guardado·(1+i)ⁿ)·i ÷ ((1+i)ⁿ − 1), arredondado para
+  cima. n = meses até o mês do prazo. n = 0 → falta tudo agora; n < 0 → prazo vencido. Recalculado a cada
+  aporte (se você atrasar, n diminui e o mensal sobe).
+- **RN-79** Ritmo real = média **ponderada** dos aportes líquidos dos últimos meses **fechados** desde o
+  início da meta (até 6): ritmo = Σ(pₖ·vₖ) ÷ Σpₖ, com peso 1 no mais antigo … n no mais recente; meses sem
+  aporte contam 0. Sem meses fechados, usa o mês atual. Ritmo ≤ 0 = "sem ritmo".
+- **RN-80** Data estimada = fim do mês (hoje + N), com N = menor número de meses para atingir o alvo com o
+  **aporte planejado** (se houver) ou o **ritmo real**. Status: N < meses até o prazo → adiantada;
+  igual → no ritmo; maior → atrasada (mostra quantos meses); sem prazo → "sem prazo"; sem ritmo → "sem ritmo".
+- **RN-81** Capacidade de poupança (sobra mensal realista) = receitas fixas do **próximo mês** (projeção) +
+  média das receitas eventuais − despesas fixas do próximo mês (recorrências e parcelas, projeção) − média
+  das despesas variáveis. Médias dos últimos 6 meses fechados, a partir do primeiro mês com movimento.
+  Comprometido com metas = soma dos aportes planejados (equivalente mensal: semanal ×52/12, anual ÷12).
+  Sobra livre = sobra − comprometido. Sobra negativa é mostrada como alerta.
+- **RN-82** Distribuição sugerida: 1º) metas com prazo recebem o mensal necessário, por prioridade (alta
+  primeiro) e prazo mais próximo; 2º) o restante vai para metas sem prazo, proporcional ao peso da
+  prioridade (3/2/1), sem passar do que falta. Inviável quando Σ mensais necessários > sobra: "para cumprir
+  todas no prazo você precisaria de R$ X/mês; sua sobra média é R$ Y".
+- **RN-83** Gráfico da meta: realizado (acumulado mês a mês), projetado no ritmo atual até atingir, linha
+  ideal reta do início até o alvo no prazo.
+- **RN-84** Simulador "e se": muda aporte mensal, prazo, alvo e rendimento e recalcula na hora, sem salvar.
+- **RN-85** Corte por categoria: economia = média mensal da categoria (só gastos **variáveis**, 3 meses
+  fechados) × X%; soma ao ritmo e mostra quantos meses antecipa.
+- **RN-86** Rendimento é **estimativa** informada pela pessoa (0–50% a.a., padrão 0), juros compostos
+  mensais; a interface avisa que não é garantia.
+- **RN-87** Projeção (ADR-0017): até 36 meses à frente, a partir das recorrências **ativas** (início/fim,
+  pausa), parcelas já lançadas e faturas; o mês atual é idêntico ao da Fase 3.
+- **RN-88** Lista de lançamentos na visão caixa mostra exatamente os itens do gráfico, com compras no cartão
+  pela data de vencimento (selo "Vence dd/mm · compra dd/mm"); meses futuros incluem as projeções (somente leitura).
+- **RN-89** Guardar em até 3 toques: + → "Guardar para meta" → valor → Guardar (a meta usada por último já vem
+  marcada); ou "Guardar" no cartão da meta → valor → Guardar.
 
 ### Bot e importação
 - **RN-30 (duplicatas)** Hash = SHA-256 de (data, valor em centavos, descrição normalizada sem acentos/espaços extras, conta/cartão, id externo do OFX quando existir). Lançamento com hash existente no espaço é marcado como duplicado e não é importado por padrão.
@@ -271,6 +323,23 @@ Exceções: logado com outro e-mail (oferece trocar de conta), convite expirado/
 - (Fase 3) 1ª compra **parcelada** num cartão sem fatura no ciclo falhava (`first_invoice_month` nulo) →
   corrigido na migration 0007, com teste de banco e E2E de regressão.
 - (Fase 3) Saldos com muitos dígitos alargavam /contas no iPhone SE → grids com `minmax(0,1fr)`.
+- (Fase 4) Tocar no meio do campo de valor e digitar inseria dígitos antes dos zeros (R$ 500 → R$ 500.000) →
+  máscara independente do cursor (`beforeinput`), com teste E2E.
+- (Fase 4) Meta: aporte maior que o restante, retirada que zera, prazo no passado/no mês atual, meta sem
+  aporte, sobra negativa, meta criada neste mês (ritmo pelo mês atual) — todos tratados e testados.
+
+## 9b. Critérios de aceite da Fase 4 (verificados)
+- [x] Aporte não aparece em despesas; saldo de origem cai, reserva sobe, patrimônio igual (pgTAP).
+- [x] Retirada sem motivo é recusada; retirada maior que o guardado é recusada; retirada que zera é aceita.
+- [x] Aporte maior que o restante conclui a meta e celebra; retirada abaixo do alvo reativa.
+- [x] Aporte planejado gera previstos idempotentes, confirmáveis, sem criar despesa.
+- [x] Projeção: mês atual idêntico à Fase 3; 36 meses à frente; nada gravado; lista do mês futuro mostra as projeções.
+- [x] Lista na visão caixa soma o mesmo que o gráfico (verificado em 6 meses/visões e por E2E).
+- [x] Família vê metas da família; individual só o dono; estranho não vê nem aporta (pgTAP).
+- [x] Cálculos com casos de borda (meta atingida, aporte maior, retirada que zera, prazo passado, prazo no mês
+      atual, sem aportes, sobra negativa, juros) em Vitest.
+- [x] Guardar em ≤ 3 toques (E2E conta os toques) em desktop e iPhone; sem rolagem horizontal em metas,
+      detalhe e planejamento no iPhone 15, iPhone SE e Android.
 
 ## 9a. Critérios de aceite da Fase 3 (verificados)
 - [x] Totais por competência e por caixa batem no acumulado de um período fechado (pgTAP).

@@ -84,6 +84,13 @@ describe("ritmo ponderado e estimativa", () => {
     const e = estimate(carro, { historyMonthlyCents: 178_095 }, today);
     expect(e).toMatchObject({ basis: "history", months: 28, date: "2029-03-31", status: "behind", deltaMonths: 4 });
   });
+  it("exemplo do README: Carro após aportes de R$ 300 e R$ 1.000 neste mês", () => {
+    // O ritmo usa só meses FECHADOS: aportes deste mês mudam o "falta" e o mensal, não o ritmo.
+    expect(estimate({ ...carro, savedCents: 1_130_000 }, { historyMonthlyCents: 178_095 }, today))
+      .toMatchObject({ months: 28, date: "2029-03-31", status: "behind", deltaMonths: 4 });
+    expect(estimate({ ...carro, savedCents: 1_230_000 }, { historyMonthlyCents: 178_095 }, today))
+      .toMatchObject({ months: 27, date: "2029-02-28", status: "behind", deltaMonths: 3 });
+  });
   it("aporte planejado tem prioridade sobre o histórico", () => {
     const e = estimate(carro, { planMonthlyCents: 250_000, historyMonthlyCents: 178_095 }, today);
     expect(e).toMatchObject({ basis: "plan", months: 20, status: "ahead", deltaMonths: -4 });

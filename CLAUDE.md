@@ -28,7 +28,13 @@ Supabase (Postgres 17, Auth, RLS, **pg_cron**) · Zod 4 · Vitest 5 · pgTAP · 
 - **Painel (Fase 3)**: agregação no banco em `public.analytics_*` (`SECURITY INVOKER` → RLS vale nas somas).
   Visões **competência** (padrão) × **caixa** (crédito no vencimento da fatura) — ADR-0014/0015.
   Realizado × previsto sempre separados. Saldo projetado em `analytics_position`.
-- Regras de data (fatura, parcelas, recorrência, competência×caixa) existem **em SQL e em TS** (`src/lib/domain`) com os
+- **Metas (Fase 4)**: aporte **não é despesa** (ADR-0016): sai da conta, entra na reserva/caixinha; retirada
+  com motivo. Aporte planejado = `recurrences.goal_id` → `goal_contributions` previstos. Toda regra de metas
+  passa pela **API interna** `src/lib/goals/service.ts` (Zod + `Result`; reutilizada por IA/bot — docs/api-interna.md);
+  cálculos puros em `src/lib/goals/math.ts`.
+- **Projeção** (ADR-0017): `private.projected_occurrences` gera ocorrências virtuais após `last_generated_on`
+  (até 36 meses); `analytics_entries` inclui por padrão (`is_projected`). Mês atual nunca muda.
+- Regras de data (fatura, parcelas, recorrência, competência×caixa, projeção) existem **em SQL e em TS** (`src/lib/domain`) com os
   **mesmos casos de teste** — mudou um, mude o outro.
 - Recorrências: geradas por trigger na criação + pg_cron diário (`gerar-recorrencias`, 03:00 BRT), idempotentes.
 - Auditoria (`audit_log`) em vez de soft delete; "desfazer" via `restore_deleted_transaction`.
@@ -40,19 +46,22 @@ Supabase (Postgres 17, Auth, RLS, **pg_cron**) · Zod 4 · Vitest 5 · pgTAP · 
 src/app/(auth)/            entrar, cadastro, recuperar/redefinir senha, convite/[token]
 src/app/(app)/             painel, lancamentos, cartoes(/[id]), contas, recorrencias, categorias, familia, configuracoes, mais
 src/app/(app)/painel/      dashboard: blocos async com <Suspense>; load.ts deduplica RPCs com cache()
-src/app/(app)/_actions/    server actions (ledger.ts, preferences.ts)
+src/app/(app)/metas/       metas + detalhe [id];  planejamento/ = sobra, compromissos, distribuição
+src/app/(app)/_actions/    server actions finas (ledger.ts, goals.ts, preferences.ts)
 src/components/dashboard/  KPIs, gráficos HTML/SVG (sem lib), toolbar de filtros (router.push), insights
 src/components/privacy/    PrivacyProvider + PrivacyToggle (ocultar valores)
+src/components/goals/      anel, cartão, gráfico, simulador, contribution-form (guardar/retirar), celebração
 src/components/ledger/     entry-sheet (provider leve) + entry-form (carregado sob demanda), listas, formulários
 src/components/ui/         shadcn + sheet.tsx (folha inferior no celular)
-src/lib/domain/            regras puras (invoice.ts, recurrence.ts, basis.ts) + testes
+src/lib/domain/            regras puras (invoice.ts, recurrence.ts, basis.ts, projection.ts) + testes
+src/lib/goals/             math.ts (puro, testado) + service.ts (API interna de metas)
 src/lib/analytics/         período, variação/tom, categorias, insights (puros, testados)
 src/lib/data/              consultas server-only (ledger.ts, analytics.ts)
-supabase/migrations/       0001 núcleo · 0002 financeiro · 0003 canais · 0004 membros · 0005 conta · 0006 Fase 2 · 0007 analytics
-supabase/tests/database/   pgTAP (164 asserções)   ·   supabase/seed.sql: ana/bruno/caio + 12 meses de demonstração
+supabase/migrations/       0001 núcleo · 0002 financeiro · 0003 canais · 0004 membros · 0005 conta · 0006 Fase 2 · 0007 analytics · 0008 metas+projeção
+supabase/tests/database/   pgTAP (206 asserções)   ·   supabase/seed.sql: ana/bruno/caio + 12 meses de demonstração
 e2e/                       Playwright: auth, conta, lançamentos, checagens iOS, screenshots do README
 scripts/                   dev-lan.mjs (celular no Wi-Fi), generate-icons.mjs (ícones PWA)
-docs/                      requisitos, modelo-de-dados, adr/ (0001–0015), design-system, roadmap, setup-manual, images/
+docs/                      requisitos, modelo-de-dados, adr/ (0001–0017), api-interna, design-system, roadmap, setup-manual, images/
 ```
 
 ## Convenções obrigatórias
@@ -67,6 +76,8 @@ docs/                      requisitos, modelo-de-dados, adr/ (0001–0015), desi
 - Folhas (`Sheet`) com formulário longo: `scroll={false}` + rodapé fixo fora da área rolável (botão sempre tocável).
 - UI: só tokens do design system; alvos de toque ≥ 44 px; inputs com fonte ≥ 16 px; `inputMode="decimal"` em valores.
 - Não chamar funções de arquivo `"use client"` em Server Components; helpers compartilhados vão em `src/lib`.
+- Campo de valor: sempre `<MoneyInput>` (máscara independente do cursor, `beforeinput`); em E2E use
+  `getByLabel("Valor", { exact: true })` (o botão "Ocultar valores" também casa com "Valor").
 - Valores na tela: sempre `<Money>` (ou `data-money` + `data-money-value`) para o "ocultar valores" funcionar.
 - Gráficos: cores `viz-*` (validadas p/ daltonismo), um eixo só, tabela alternativa (`ChartFrame`), sem
   biblioteca de gráficos; primeira dobra sem fade de opacidade (LCP). Regras em `docs/design-system.md`.
@@ -100,7 +111,8 @@ docs/                      requisitos, modelo-de-dados, adr/ (0001–0015), desi
       calculadas, pagamento de fatura, parcelamento com escopo, recorrências (pg_cron), auditoria/desfazer
 - [x] **Fase 3** — Dashboard: KPIs + variação, saldo projetado, competência × caixa, realizado × previsto,
       gráficos, insights por regra, filtros na URL, ocultar valores, Lighthouse a11y 100 / perf 95 (throttling real)
-- [ ] Fase 4 — Metas e projeções
+- [x] **Fase 4** — Metas (aportes/retiradas, aporte planejado, conclusão), cálculos (mensal necessário, ritmo
+      ponderado, estimativa), simulador, Planejamento, motor de projeção 36 meses, lista na visão caixa
 - [ ] Fase 5 — IA (Gemini + Groq atrás de `AiParser`)
 - [ ] Fase 6 — WhatsApp Cloud API + Telegram (adapters)
 - [ ] Fase 7 — Importação CSV/OFX + leitura de prints
@@ -108,7 +120,6 @@ docs/                      requisitos, modelo-de-dados, adr/ (0001–0015), desi
 
 ## Pendências conhecidas
 - iOS Simulator/iPhone físico ainda não validados (emulação WebKit cobre layout; ver ADR-0012).
-- Progresso das metas no painel: Fase 4.
-- Projeção de meses futuros ignora recorrências ainda não geradas (horizonte = fim do mês atual).
+- Meta com imagem própria (upload): adiado; hoje ícone + cor.
 - Lighthouse "simulado" dá LCP ~4 s (modelo pessimista); com throttling real 2,3 s.
 - `audit_log` sem retenção (Fase 8).

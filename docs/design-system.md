@@ -139,3 +139,20 @@ as colunas alinharem.
 
 **Estados**: skeleton por bloco (mesma forma do conteúdo, sem pulo); vazio com ícone + frase + ação
 ("Lançar agora"); "Ainda não há 3 meses de histórico para comparar".
+
+## Metas e planejamento (Fase 4)
+- **Anel de progresso** (`GoalRing`, SVG sem ids): cor da meta sobre `surface-2`; % no centro; rótulo
+  acessível "Carro: 18% concluído". Grande no detalhe (132 px), médio no cartão (68 px), pequeno no painel.
+- **Status de ritmo** (`PaceBadge`) sempre com **ícone + texto**: Adiantada (verde, foguete) · No ritmo (menta,
+  velocímetro) · Atrasada N meses (âmbar, alerta) · Sem prazo / Sem ritmo ainda (neutro, relógio) · Concluída.
+- **Cartão da meta**: anel + nome + prioridade → guardado "de" alvo → selo de ritmo → 3 números (Falta · Por mês
+  até o prazo · Chega em) → rodapé com plano/ritmo e botão **Guardar** (zona do polegar). Pausada/arquivada a 75%.
+- **Gráfico da meta**: um eixo em R$; **linha cheia** = guardado; **tracejada** = projeção (o tracejado aqui
+  significa *estimativa* de propósito); linha fina neutra = ritmo ideal; linha do **Alvo**. Tabela alternativa.
+- **Simulador "e se"**: resultado em `<output aria-live>`; nada é salvo; botão "Atual" volta aos valores reais.
+- **Guardar para meta**: folha com segmento Guardar/Retirar, valor grande, grade de metas com mini-barra, conta
+  e data em "Mais opções". Texto fixo: "Guardar não é despesa".
+- **Celebração**: cartão "Meta concluída!" + confete curto (2,6 s); com `prefers-reduced-motion` só o cartão.
+- **Planejamento**: número-herói "Sobra mensal realista" + a conta que leva até ela (Renda − Fixas − Variáveis),
+  compromissos, alerta (âmbar com ícone, nunca só cor) e tabela de distribuição.
+- Cores: o **violeta `savings`** identifica "guardado/metas" no app inteiro (KPI, botões, histórico).

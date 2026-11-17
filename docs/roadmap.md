@@ -6,8 +6,8 @@
 | 1 | Fundação: projeto, Supabase, migrations + RLS, auth, família/convites, alternância de espaço, layout | ✅ Concluída |
 | 2 | Receitas, despesas, categorias, contas, cartões, faturas, parcelamento, recorrências | ✅ Concluída |
 | 3 | Dashboard e gráficos | ✅ Concluída |
-| 4 | Metas e projeções | ⏭️ Próxima |
-| 5 | IA de interpretação de mensagens | Planejada |
+| 4 | Metas e projeções | ✅ Concluída |
+| 5 | IA de interpretação de mensagens | ⏭️ Próxima |
 | 6 | WhatsApp (Cloud API) + Telegram | Planejada |
 | 7 | Importação CSV/OFX e leitura de prints | Planejada |
 | 8 | PWA, testes finais, deploy e hardening | Planejada |
@@ -19,6 +19,8 @@
 - **Fase 1+**: troca de e-mail, exclusão de conta, transferência de posse (ADR-0013); ambiente de testes
   iPhone/Android com Playwright WebKit, CI no GitHub Actions, `pnpm dev:lan`, ícones e manifest PWA (ADR-0012).
 - **Fase 2+**: transferências, auditoria com desfazer (ADR-0009), subcategorias, recorrências semanais/anuais.
+- **Fase 4+**: motor de projeção por regras (36 meses), lista de lançamentos na visão caixa e com projeções,
+  tela Planejamento, API interna de metas para IA/bot, correção do campo de valor (cursor).
 - **Fase 3+**: saldo projetado, insights por regra, ocultar valores, tabela alternativa em todo gráfico,
   formulário de lançamento carregado sob demanda (desempenho), correção da 1ª compra parcelada.
 
@@ -41,12 +43,17 @@
   botão voltar; Lighthouse mobile acessibilidade 100.
 - **Pendências herdadas:** retenção do `audit_log` (Fase 8); progresso das metas no painel (Fase 4).
 
-## Fase 4 · Metas e projeções (próxima)
-- Módulo puro `projections.ts` (RN-20…23) com testes de tabela; CRUD de metas e aportes (inclui resgate).
-- Tela da meta: progresso, valor mensal necessário, prazo estimado, simulador "e se eu guardar X?".
-- **Aceite:** aportes de 100/200/300 recalculam prazo e valor mensal corretamente.
+## Fase 4 · Metas e projeções ✅
+- **Antes da fase:** motor de projeção a partir das regras (ADR-0017) e lista na visão caixa igual ao gráfico.
+- **Back-end:** metas com prioridade, valor inicial, reserva, rendimento e status; aportes/retiradas; aporte
+  planejado via recorrências; regra contábil "aporte não é despesa" (ADR-0016); capacidade de poupança; RLS e
+  pgTAP; API interna (`docs/api-interna.md`).
+- **Front-end:** Metas (cartões ordenáveis), detalhe (gráfico realizado × projetado × ideal, simulador, corte por
+  categoria, plano, histórico, quem guardou), Planejamento, "Guardar para meta" em 3 toques, celebração,
+  "Guardado em metas" no painel e widget.
+- **Aceite (verificado):** nada contado duas vezes; mês atual da projeção = Fase 3; casos de borda dos cálculos.
 
-## Fase 5 · IA de mensagens
+## Fase 5 · IA de mensagens (próxima)
 - Interface `AiParser` + `GeminiParser` + `GroqParser` (ADR-0005); saída JSON validada com Zod.
 - `MessageService`: intents `create_expense`, `create_income`, `goal_contribution`, `query`, `undo`,
   `switch_workspace`; perguntas de esclarecimento com estado em `bot_sessions`.
