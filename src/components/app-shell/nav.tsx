@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Plus } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useEntrySheet } from "@/components/ledger/entry-sheet";
 import { cn } from "@/lib/utils";
-import { MOBILE_NAV, NAV_ITEMS } from "./nav-config";
+import { MOBILE_NAV, MORE_ITEMS, NAV_ITEMS } from "./nav-config";
 
 function isActive(pathname: string, href: string) {
+  if (href === "/mais") return pathname === "/mais" || MORE_ITEMS.some((i) => pathname.startsWith(i.href));
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -50,7 +51,7 @@ export function MobileBottomNav() {
   return (
     <nav
       aria-label="Principal"
-      className="glass fixed inset-x-0 bottom-0 z-40 border-t pb-safe lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t bg-card pb-safe lg:hidden"
     >
       <div className="mx-auto grid h-16 max-w-md grid-cols-5 items-center px-2">
         {[a, b].map((item) => (
@@ -88,29 +89,21 @@ function MobileItem({
   );
 }
 
-/**
- * Botão "+" de lançamento rápido. Na Fase 2 ele abre a folha de lançamento
- * (valor → categoria → salvar: até 3 toques).
- */
+/** Botão "+" de lançamento rápido (3 toques: + → valor → categoria → Salvar). Atalho: tecla N. */
 export function QuickAddButton({ className }: { className?: string }) {
+  const { open } = useEntrySheet();
   return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <button
-            type="button"
-            aria-label="Novo lançamento (disponível na Fase 2)"
-            aria-disabled="true"
-            className={cn(
-              "grid size-12 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-[0_10px_30px_-10px_var(--primary)] transition-transform active:scale-95",
-              className,
-            )}
-          />
-        }
-      >
-        <Plus className="size-6" strokeWidth={2.5} />
-      </TooltipTrigger>
-      <TooltipContent>Lançamento rápido chega na Fase 2</TooltipContent>
-    </Tooltip>
+    <button
+      type="button"
+      onClick={() => open()}
+      aria-label="Novo lançamento"
+      aria-keyshortcuts="N"
+      className={cn(
+        "grid size-12 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-[0_10px_30px_-10px_var(--primary)] transition-transform active:scale-95",
+        className,
+      )}
+    >
+      <Plus className="size-6" strokeWidth={2.5} />
+    </button>
   );
 }

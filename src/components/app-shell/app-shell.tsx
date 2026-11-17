@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { Logo, LogoMark } from "@/components/brand/logo";
+import { EntrySheetProvider } from "@/components/ledger/entry-sheet";
+import { getLedgerLookups } from "@/lib/data/ledger";
+import { todayISO } from "@/lib/dates";
 import { getWorkspaceContext } from "@/lib/workspaces/context";
 import { MobileBottomNav, QuickAddButton, SidebarNav } from "./nav";
 import { UserMenu } from "./user-menu";
@@ -7,8 +10,10 @@ import { WorkspaceSwitcher } from "./workspace-switcher";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const { user, workspaces, active } = await getWorkspaceContext();
+  const lookups = await getLedgerLookups(active.id, user.id);
 
   return (
+    <EntrySheetProvider workspaceId={active.id} lookups={lookups} today={todayISO()}>
     <div className="relative min-h-dvh lg:grid lg:grid-cols-[17rem_1fr]">
       {/* Brilho de fundo sutil */}
       <div aria-hidden className="pointer-events-none fixed inset-x-0 top-0 -z-10 h-80 bg-[radial-gradient(60%_100%_at_50%_0%,var(--glow-1),transparent)]" />
@@ -22,7 +27,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         <SidebarNav />
         <div className="mt-auto grid gap-3">
           <div className="flex items-center justify-between rounded-xl border border-dashed p-3">
-            <span className="text-xs text-muted-foreground">Novo lançamento</span>
+            <span className="text-xs text-muted-foreground">
+              Novo lançamento <kbd className="ml-1 rounded border px-1 font-mono text-[10px]">N</kbd>
+            </span>
             <QuickAddButton className="size-9 rounded-xl" />
           </div>
           <UserMenu name={user.fullName} email={user.email} showDetails />
@@ -46,6 +53,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
 
       <MobileBottomNav />
     </div>
+    </EntrySheetProvider>
   );
 }
 

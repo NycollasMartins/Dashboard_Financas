@@ -52,3 +52,18 @@ export function formatMonth(month: ISODate): string {
   const [y, m] = month.split("-").map(Number);
   return monthLabel.format(new Date(Date.UTC(y, m - 1, 1)));
 }
+
+/** "2026-12-01" → "Dezembro de 2026" (só a primeira letra maiúscula). */
+export function formatMonthTitle(month: ISODate): string {
+  const s = formatMonth(month);
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/** "2026-12-01" → "dez/26" (chips compactos). */
+export function formatMonthShort(month: ISODate): string {
+  const [y, m] = month.split("-").map(Number);
+  const name = new Intl.DateTimeFormat("pt-BR", { month: "short", timeZone: "UTC" })
+    .format(new Date(Date.UTC(y, m - 1, 1)))
+    .replace(".", "");
+  return `${name}/${String(y).slice(2)}`;
+}
