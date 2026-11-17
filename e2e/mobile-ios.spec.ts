@@ -11,7 +11,7 @@ async function noHorizontalScroll(page: Page) {
   expect(overflow, "a página não pode rolar na horizontal").toBeLessThanOrEqual(0);
 }
 
-for (const path of ["/painel", "/familia", "/configuracoes", "/lancamentos", "/cartoes", "/contas", "/recorrencias", "/categorias", "/mais"]) {
+for (const path of ["/painel", "/painel?visao=caixa", "/painel?ano=2026", "/familia", "/configuracoes", "/lancamentos", "/cartoes", "/contas", "/recorrencias", "/categorias", "/mais"]) {
   test(`layout sem rolagem horizontal em ${path}`, async ({ page }) => {
     await page.goto(path);
     await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
