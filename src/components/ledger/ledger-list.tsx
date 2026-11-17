@@ -36,8 +36,8 @@ export function LedgerList({ rows, lookups, today }: { rows: LedgerRow[]; lookup
           <section key={day} aria-label={dayLabel(day, today)} className="animate-rise">
             <header className="mb-2 flex items-baseline justify-between px-1">
               <h2 className="text-sm font-semibold">{dayLabel(day, today)}</h2>
-              <span className={cn("text-money text-xs", total > 0 ? "text-income" : total < 0 ? "text-expense" : "text-muted-foreground")}>
-                {formatBRL(total, { signed: true })}
+              <span data-money className={cn("text-money text-xs", total > 0 ? "text-income" : total < 0 ? "text-expense" : "text-muted-foreground")}>
+                <span data-money-value>{formatBRL(total, { signed: true })}</span>
               </span>
             </header>
             <ul className="divide-y overflow-hidden rounded-2xl border bg-card">
@@ -94,6 +94,7 @@ export function LedgerList({ rows, lookups, today }: { rows: LedgerRow[]; lookup
                       </span>
                       <span className="grid justify-items-end gap-0.5">
                         <span
+                          data-money
                           className={cn(
                             "text-money text-sm font-semibold",
                             r.kind === "income" && "text-income",
@@ -102,8 +103,10 @@ export function LedgerList({ rows, lookups, today }: { rows: LedgerRow[]; lookup
                             !r.isSettled && "opacity-60",
                           )}
                         >
-                          {r.kind === "income" ? "+" : r.kind === "expense" ? "−" : ""}
-                          {formatBRL(r.amountCents)}
+                          <span data-money-value>
+                            {r.kind === "income" ? "+" : r.kind === "expense" ? "−" : ""}
+                            {formatBRL(r.amountCents)}
+                          </span>
                         </span>
                         {!r.isSettled && (
                           <span className="flex items-center gap-1 text-[10px] font-semibold tracking-wide text-warning uppercase">

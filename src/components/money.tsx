@@ -15,6 +15,7 @@ export function Money({
 }) {
   return (
     <span
+      data-money
       className={cn(
         "text-money",
         tone === "income" && "text-income",
@@ -23,7 +24,7 @@ export function Money({
         className,
       )}
     >
-      {formatBRL(cents, { signed })}
+      <span data-money-value>{formatBRL(cents, { signed })}</span>
     </span>
   );
 }

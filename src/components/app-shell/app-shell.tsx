@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Logo, LogoMark } from "@/components/brand/logo";
 import { EntrySheetProvider } from "@/components/ledger/entry-sheet";
+import { PrivacyProvider, PrivacyToggle } from "@/components/privacy/privacy";
 import { getLedgerLookups } from "@/lib/data/ledger";
 import { todayISO } from "@/lib/dates";
 import { getWorkspaceContext } from "@/lib/workspaces/context";
@@ -13,6 +14,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   const lookups = await getLedgerLookups(active.id, user.id);
 
   return (
+    <PrivacyProvider initialHidden={user.hideAmounts}>
     <EntrySheetProvider workspaceId={active.id} lookups={lookups} today={todayISO()}>
     <div className="relative min-h-dvh lg:grid lg:grid-cols-[17rem_1fr]">
       {/* Brilho de fundo sutil */}
@@ -43,7 +45,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           <LogoMark className="size-7" />
         </Link>
         <WorkspaceSwitcher workspaces={workspaces} activeId={active.id} compact />
-        <UserMenu name={user.fullName} email={user.email} />
+        <div className="flex items-center">
+          <PrivacyToggle />
+          <UserMenu name={user.fullName} email={user.email} />
+        </div>
         </div>
       </header>
 
@@ -54,6 +59,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       <MobileBottomNav />
     </div>
     </EntrySheetProvider>
+    </PrivacyProvider>
   );
 }
 

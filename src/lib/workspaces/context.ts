@@ -16,7 +16,7 @@ export type WorkspaceSummary = {
 };
 
 export type WorkspaceContext = {
-  user: { id: string; email: string; fullName: string; avatarUrl: string | null };
+  user: { id: string; email: string; fullName: string; avatarUrl: string | null; hideAmounts: boolean };
   workspaces: WorkspaceSummary[];
   active: WorkspaceSummary;
 };
@@ -35,7 +35,7 @@ export const getWorkspaceContext = cache(async (): Promise<WorkspaceContext> => 
       .from("workspace_members")
       .select("role, workspace:workspaces!inner(id, name, kind, owner_id)")
       .eq("user_id", user.id),
-    supabase.from("profiles").select("full_name, avatar_url, last_workspace_id").eq("id", user.id).single(),
+    supabase.from("profiles").select("full_name, avatar_url, last_workspace_id, hide_amounts").eq("id", user.id).single(),
   ]);
 
   if (membershipsRes.error) throw membershipsRes.error;
@@ -64,6 +64,7 @@ export const getWorkspaceContext = cache(async (): Promise<WorkspaceContext> => 
       email: user.email,
       fullName: profileRes.data.full_name,
       avatarUrl: profileRes.data.avatar_url,
+      hideAmounts: profileRes.data.hide_amounts,
     },
     workspaces,
     active,
