@@ -7,6 +7,8 @@ import { devices, test } from "@playwright/test";
 const PAGES = [
   ["painel", "/painel"],
   ["painel-caixa", `/painel?visao=caixa&ano=${new Date().getFullYear()}`],
+  ["metas", "/metas"],
+  ["planejamento", "/planejamento"],
   ["lancamentos", "/lancamentos"],
   ["cartoes", "/cartoes"],
   ["contas", "/contas"],
@@ -32,7 +34,7 @@ for (const t of TARGETS) {
         await page.waitForLoadState("networkidle");
         await page.waitForTimeout(1200); // animações de entrada (barras dos gráficos)
         // Painel no desktop: página inteira (mostra todos os gráficos).
-        const fullPage = t.name === "desktop" && slug.startsWith("painel");
+        const fullPage = t.name === "desktop" && (slug.startsWith("painel") || slug === "planejamento");
         await page.screenshot({ path: `docs/images/${t.name}-${slug}.png`, fullPage });
       });
     }
@@ -44,6 +46,23 @@ for (const t of TARGETS) {
       await page.getByRole("radio", { name: "Restaurantes e delivery" }).click();
       await page.waitForTimeout(500);
       await page.screenshot({ path: `docs/images/${t.name}-lancamento-rapido.png` });
+    });
+
+    test("meta", async ({ page }) => {
+      await page.goto("/metas");
+      await page.getByRole("link", { name: "Carro" }).click();
+      await page.waitForURL(/\/metas\/[0-9a-f-]+/);
+      await page.waitForLoadState("networkidle");
+      await page.waitForTimeout(800);
+      await page.screenshot({ path: `docs/images/${t.name}-meta.png`, fullPage: t.name === "desktop" });
+    });
+
+    test("guardar-meta", async ({ page }) => {
+      await page.goto("/metas");
+      await page.getByRole("button", { name: "Guardar para Carro" }).click();
+      await page.getByLabel("Valor", { exact: true }).pressSequentially("30000");
+      await page.waitForTimeout(500);
+      await page.screenshot({ path: `docs/images/${t.name}-guardar-meta.png` });
     });
 
     test("fatura", async ({ page }) => {
