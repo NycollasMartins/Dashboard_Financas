@@ -1,36 +1,24 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Finanças
 
-## Getting Started
+Dashboard financeiro pessoal e familiar: receitas, despesas, cartões, metas e (em breve) lançamentos
+por WhatsApp/Telegram com IA. Next.js 16 + Supabase, custo zero.
 
-First, run the development server:
-
+## Começar
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
+pnpm db:start          # Supabase local (requer Docker Desktop aberto)
+cp .env.example .env.local   # preencha com `supabase status`
+pnpm dev               # http://localhost:3000  ·  e-mails de teste: http://127.0.0.1:54324
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Documentação
+- [CLAUDE.md](CLAUDE.md) — visão, arquitetura, convenções e status das fases
+- [docs/requisitos.md](docs/requisitos.md) — requisitos, regras de negócio, critérios de aceite
+- [docs/modelo-de-dados.md](docs/modelo-de-dados.md) — diagrama ER e políticas de RLS
+- [docs/adr/](docs/adr/) — decisões de arquitetura
+- [docs/design-system.md](docs/design-system.md) — tokens, tipografia, componentes
+- [docs/roadmap.md](docs/roadmap.md) — fases
+- [docs/setup-manual.md](docs/setup-manual.md) — passo a passo do que configurar manualmente
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Qualidade
+`pnpm check` roda typecheck, lint, testes unitários (Vitest) e testes de isolamento no banco (pgTAP).
