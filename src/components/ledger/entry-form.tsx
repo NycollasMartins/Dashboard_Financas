@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowDownRight, ArrowLeftRight, ArrowUpRight, ChevronDown, CreditCard, Loader2, MessageCircle, PiggyBank, Trash2 } from "lucide-react";
 import {
   deleteEntryAction,
@@ -110,6 +111,7 @@ function EntryForm({
   const editing = Boolean(draft.id);
   const [state, action, pending] = useActionState(saveEntryAction, idleState);
   const { open: openSheet } = useEntrySheet();
+  const router = useRouter();
   const [kind, setKind] = useState<"expense" | "income" | "transfer">(draft.kind ?? "expense");
   const [amount, setAmount] = useState(draft.amountCents ?? 0);
   const [categoryId, setCategoryId] = useState<string | null>(draft.categoryId ?? null);
@@ -226,7 +228,12 @@ function EntryForm({
       {!editing && (
         <Link
           href="/assistente"
-          onClick={onDone}
+          // Navega primeiro e só depois fecha a folha (fechar antes cancelava o clique no iPhone).
+          onClick={(e) => {
+            e.preventDefault();
+            router.push("/assistente");
+            setTimeout(onDone, 0);
+          }}
           className="-mt-2 flex h-11 items-center justify-center gap-2 rounded-xl text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
         >
           <MessageCircle className="size-4" /> Prefere escrever? Falar com o assistente

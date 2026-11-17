@@ -77,7 +77,8 @@ export function AssistantChat({ initial, aiConfigured }: { initial: ChatMessage[
             <Loader2 className="size-4 animate-spin" /> Pensando…
           </div>
         )}
-        <div ref={endRef} />
+        {/* Margem de rolagem: o fim da conversa para ACIMA da barra de digitação fixa. */}
+        <div ref={endRef} className="h-px scroll-mb-44 lg:scroll-mb-36" />
       </section>
 
       <div className="sticky bottom-[calc(5rem+env(safe-area-inset-bottom))] z-10 grid gap-2 bg-background/95 pt-2 pb-1 backdrop-blur lg:bottom-0">
