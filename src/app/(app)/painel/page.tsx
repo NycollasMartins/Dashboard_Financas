@@ -185,15 +185,16 @@ async function Overview({ ctx }: { ctx: Ctx }) {
         </SectionEmpty>
       )}
       <section aria-label="Resumo do período" className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
-        <KpiCard index={0} label="Receitas" icon={ArrowUpRight} iconClass="text-income" metric="income"
+        <h2 className="sr-only">Resumo do período</h2>
+        <KpiCard label="Receitas" icon={ArrowUpRight} iconClass="text-income" metric="income"
           cents={cur.incomeCents} previous={prev.incomeCents} previousLabel={prevLabel}
           planned={cur.incomePlannedCents} plannedLabel="a receber" />
-        <KpiCard index={1} label="Despesas" icon={ArrowDownRight} iconClass="text-expense" metric="expense"
+        <KpiCard label="Despesas" icon={ArrowDownRight} iconClass="text-expense" metric="expense"
           cents={cur.expenseCents} previous={prev.expenseCents} previousLabel={prevLabel}
           planned={cur.expensePlannedCents} plannedLabel="previsto" />
-        <KpiCard index={2} label="Saldo do período" icon={Scale} iconClass="text-primary" metric="balance" highlight
+        <KpiCard label="Saldo do período" icon={Scale} iconClass="text-primary" metric="balance" highlight
           cents={balance} previous={prevBalance} previousLabel={prevLabel} />
-        <KpiCard index={3} label="Taxa de economia" icon={PiggyBank} iconClass="text-savings" metric="rate"
+        <KpiCard label="Taxa de economia" icon={PiggyBank} iconClass="text-savings" metric="rate"
           rate={rate} previous={prevRate} previousLabel={prevLabel} />
       </section>
       <ProjectionCard

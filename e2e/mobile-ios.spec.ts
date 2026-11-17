@@ -72,7 +72,7 @@ test("altura usa dvh (não corta atrás da barra do Safari)", async ({ page }) =
 
 test("seletor de espaço abre e lista individual + família", async ({ page }) => {
   await page.goto("/painel");
-  await page.getByRole("button", { name: "Trocar de espaço" }).filter({ visible: true }).click();
+  await page.getByRole("button", { name: /^Trocar de espaço/ }).filter({ visible: true }).click();
   await expect(page.getByRole("menuitem", { name: /Pessoal/ })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: /Casa Teste/ })).toBeVisible();
 });

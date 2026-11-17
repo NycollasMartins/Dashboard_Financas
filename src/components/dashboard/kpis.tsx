@@ -5,6 +5,9 @@ import { formatPct, toneFor, variation, type MetricKind } from "@/lib/analytics/
 import { cn } from "@/lib/utils";
 
 /*
+ * Primeira dobra SEM animação de opacidade: elementos invisíveis não contam
+ * como pintados e atrasavam o LCP (Lighthouse) — desempenho no celular.
+ *
  * KPIs do topo. A variação mostra seta + % + texto (nunca só cor): gasto
  * subindo = ruim (coral), receita/saldo/taxa subindo = bom (verde).
  */
@@ -58,7 +61,6 @@ export function KpiCard({
   previousLabel,
   planned,
   plannedLabel,
-  index = 0,
   highlight,
 }: {
   label: string;
@@ -71,15 +73,13 @@ export function KpiCard({
   previousLabel: string;
   planned?: number;
   plannedLabel?: string;
-  index?: number;
   highlight?: boolean;
 }) {
   const current = rate !== undefined ? (rate ?? 0) : (cents ?? 0);
   return (
     <article
-      style={{ animationDelay: `${index * 50}ms` }}
       className={cn(
-        "grid min-w-0 content-between gap-2 rounded-2xl border bg-card p-4 animate-rise sm:p-5",
+        "grid min-w-0 content-between gap-2 rounded-2xl border bg-card p-4 sm:p-5",
         highlight && "bg-[linear-gradient(140deg,color-mix(in_oklch,var(--primary)_12%,var(--card)),var(--card)_60%)]",
       )}
     >
@@ -130,7 +130,7 @@ export function ProjectionCard({
   return (
     <section
       aria-labelledby="projecao-title"
-      className="relative grid gap-4 overflow-hidden rounded-2xl border bg-card p-5 animate-rise sm:p-6"
+      className="relative grid gap-4 overflow-hidden rounded-2xl border bg-card p-5 sm:p-6"
     >
       <div aria-hidden className="pointer-events-none absolute -top-24 -right-16 size-64 rounded-full bg-[radial-gradient(closest-side,var(--glow-1),transparent)] animate-glow" />
       <div className="relative grid gap-1">
@@ -194,8 +194,8 @@ export function PositionStrip({
   ];
   return (
     <ul className="grid gap-2 sm:grid-cols-3 sm:gap-3" aria-label="Posição atual">
-      {items.map((it, i) => (
-        <li key={it.label} style={{ animationDelay: `${150 + i * 40}ms` }} className="animate-rise">
+      {items.map((it) => (
+        <li key={it.label}>
           <Link href={it.href} className="flex min-h-14 items-center gap-3 rounded-2xl border bg-card px-4 py-3 hover:bg-accent/50">
             <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-surface-2 text-muted-foreground">
               <it.icon className="size-4" />

@@ -145,7 +145,7 @@ export function TrendChart({ points, selected, basisLabel }: { points: TrendPoin
             return (
               <li key={r.month} className={cn("truncate", selected.includes(r.month.slice(0, 7)) && "font-semibold text-foreground")}>
                 {n > 6 && (n - 1 - i) % 2 === 1 && r.month.slice(5, 7) !== "01" ? <span className="hidden sm:inline">{name}</span> : name}
-                {(r.month.slice(5, 7) === "01" || i === 0) && <span className="block opacity-70">{yy}</span>}
+                {(r.month.slice(5, 7) === "01" || i === 0) && <span className="block">{yy}</span>}
               </li>
             );
           })}

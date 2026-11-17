@@ -62,10 +62,11 @@ export function WorkspaceSwitcher({
           compact && "w-auto max-w-[60vw] border-transparent bg-transparent p-1.5",
           pending && "opacity-70",
         )}
-        aria-label="Trocar de espaço"
       >
         <WorkspaceIcon kind={active.kind} className={compact ? "size-7" : undefined} />
         <span className="min-w-0 flex-1">
+          {/* Nome acessível contém o texto visível (WCAG 2.5.3) */}
+          <span className="sr-only">Trocar de espaço: </span>
           {!compact && (
             <span className="block text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
               {active.kind === "personal" ? "Individual" : "Família"}
