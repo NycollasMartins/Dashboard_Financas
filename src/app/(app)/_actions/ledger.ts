@@ -6,12 +6,12 @@ import { fail, ok, type ActionState } from "@/lib/action-state";
 import { requireUser } from "@/lib/auth/session";
 import { dbErrorMessage } from "@/lib/errors";
 import { formToObject } from "@/lib/form-data";
+import { registrarLancamento } from "@/lib/ledger/service";
 import { createClient } from "@/lib/supabase/server";
 import {
   accountSchema,
   cardSchema,
   categorySchema,
-  entrySchema,
   invoicePaymentSchema,
   recurrenceSchema,
   scopeSchema,
@@ -37,87 +37,13 @@ export async function saveEntryAction(
   formData: FormData,
 ): Promise<ActionState<{ id: string }>> {
   const raw = formToObject(formData);
-  const parsed = entrySchema.safeParse(raw);
-  if (!parsed.success) return fail("Confira os campos destacados.", flat(parsed.error), raw);
-  const v = parsed.data;
-
-  await requireUser();
-  const supabase = await createClient();
-
-  // Transferência entre contas
-  if (v.kind === "transfer") {
-    const row = {
-      workspace_id: v.workspaceId,
-      from_account_id: v.accountId!,
-      to_account_id: v.toAccountId!,
-      amount_cents: v.amountCents,
-      occurred_on: v.occurredOn,
-      description: v.description ?? null,
-    };
-    const res = v.id
-      ? await supabase.from("transfers").update(row).eq("id", v.id).select("id").single()
-      : await supabase.from("transfers").insert(row).select("id").single();
-    if (res.error) return fail(dbErrorMessage(res.error, "Não foi possível salvar a transferência."), undefined, raw);
-    refresh();
-    return ok("Transferência salva.", { id: res.data.id });
-  }
-
-  const description = v.description ?? (await categoryName(v.categoryId)) ?? (v.kind === "income" ? "Receita" : "Despesa");
-
-  // Nova compra no cartão (à vista ou parcelada): RPC calcula faturas e parcelas.
-  if (!v.id && v.paymentMethod === "credit") {
-    const { data, error } = await supabase.rpc("create_card_purchase", {
-      p_workspace_id: v.workspaceId,
-      p_card_id: v.cardId!,
-      p_total_cents: v.amountCents,
-      p_installments: v.installments,
-      p_description: description,
-      p_occurred_on: v.occurredOn,
-      p_category_id: v.categoryId,
-      p_member_user_id: v.memberUserId,
-      p_notes: v.notes,
-    });
-    if (error || !data) return fail(dbErrorMessage(error, "Não foi possível salvar a compra."), undefined, raw);
-    refresh();
-    return ok(v.installments > 1 ? `Compra em ${v.installments}x registrada.` : "Compra no cartão registrada.", { id: data });
-  }
-
-  const row = {
-    workspace_id: v.workspaceId,
-    kind: v.kind,
-    amount_cents: v.amountCents,
-    description,
-    occurred_on: v.occurredOn,
-    category_id: v.categoryId ?? null,
-    payment_method: v.paymentMethod,
-    account_id: v.paymentMethod === "credit" ? null : (v.accountId ?? null),
-    card_id: v.paymentMethod === "credit" ? v.cardId! : null,
-    member_user_id: v.memberUserId ?? null,
-    notes: v.notes ?? null,
-    is_settled: v.isSettled,
-  };
-
-  if (v.id) {
-    const { data, error } = await supabase.from("transactions").update(row).eq("id", v.id).select("id");
-    if (error || !data?.length) {
-      return fail(dbErrorMessage(error, "Você só pode editar lançamentos que criou (ou ser admin)."), undefined, raw);
-    }
-    refresh();
-    return ok("Lançamento atualizado.", { id: v.id });
-  }
-
-  const { data, error } = await supabase.from("transactions").insert(row).select("id").single();
-  if (error) return fail(dbErrorMessage(error, "Não foi possível salvar o lançamento."), undefined, raw);
+  const user = await requireUser();
+  const res = await registrarLancamento({ supabase: await createClient(), userId: user.id }, raw);
+  if (!res.ok) return fail(res.message, res.fieldErrors, raw);
   refresh();
-  return ok(v.kind === "income" ? "Receita registrada." : "Despesa registrada.", { id: data.id });
+  return ok(res.data.message, { id: res.data.id });
 }
 
-async function categoryName(id?: string) {
-  if (!id) return null;
-  const supabase = await createClient();
-  const { data } = await supabase.from("categories").select("name").eq("id", id).maybeSingle();
-  return data?.name ?? null;
-}
 
 export async function deleteEntryAction(
   type: "transaction" | "transfer",

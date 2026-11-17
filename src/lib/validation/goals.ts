@@ -62,7 +62,7 @@ export const contributionSchema = z
     accountId: optionalUuid,
     memberUserId: optionalUuid,
     note: optionalText(200),
-    source: z.enum(["manual", "whatsapp", "telegram"]).default("manual"),
+    source: z.enum(["manual", "assistant", "whatsapp", "telegram"]).default("manual"),
   })
   .superRefine((v, ctx) => {
     if (v.kind === "withdrawal" && !v.note)

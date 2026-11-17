@@ -1,8 +1,8 @@
 import "server-only";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { addMonths, monthStart, todayISO, type ISODate } from "@/lib/dates";
 import { dbErrorMessage } from "@/lib/errors";
+import type { Ctx, Result } from "@/lib/service-result";
 import type { Database } from "@/lib/supabase/database.types";
 import {
   contributionSchema,
@@ -49,10 +49,7 @@ import {
  *   3. devolve `Result` (nunca lança para erros de negócio).
  */
 
-export type Ctx = { supabase: SupabaseClient<Database>; userId: string; today?: ISODate };
-export type Result<T> =
-  | { ok: true; data: T }
-  | { ok: false; message: string; fieldErrors?: Record<string, string[] | undefined> };
+export type { Ctx, Result } from "@/lib/service-result";
 
 const fail = (message: string, fieldErrors?: Record<string, string[] | undefined>): { ok: false; message: string; fieldErrors?: Record<string, string[] | undefined> } => ({ ok: false, message, fieldErrors });
 const fieldErrors = (e: z.ZodError) => z.flattenError(e).fieldErrors as Record<string, string[] | undefined>;

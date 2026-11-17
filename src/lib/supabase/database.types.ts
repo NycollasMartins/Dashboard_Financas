@@ -87,6 +87,148 @@ export type Database = {
           },
         ]
       }
+      assistant_actions: {
+        Row: {
+          batch_id: string
+          channel: string
+          created_at: string
+          id: string
+          intent: string
+          original_text: string
+          provider: string | null
+          record_id: string
+          record_table: string
+          undo_kind: string
+          undone_at: string | null
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          batch_id: string
+          channel?: string
+          created_at?: string
+          id?: string
+          intent: string
+          original_text: string
+          provider?: string | null
+          record_id: string
+          record_table: string
+          undo_kind?: string
+          undone_at?: string | null
+          user_id?: string
+          workspace_id: string
+        }
+        Update: {
+          batch_id?: string
+          channel?: string
+          created_at?: string
+          id?: string
+          intent?: string
+          original_text?: string
+          provider?: string | null
+          record_id?: string
+          record_table?: string
+          undo_kind?: string
+          undone_at?: string | null
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assistant_actions_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assistant_messages: {
+        Row: {
+          body: string
+          channel: string
+          created_at: string
+          id: string
+          payload: Json | null
+          role: string
+          user_id: string
+          workspace_id: string | null
+        }
+        Insert: {
+          body: string
+          channel?: string
+          created_at?: string
+          id?: string
+          payload?: Json | null
+          role: string
+          user_id?: string
+          workspace_id?: string | null
+        }
+        Update: {
+          body?: string
+          channel?: string
+          created_at?: string
+          id?: string
+          payload?: Json | null
+          role?: string
+          user_id?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assistant_messages_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assistant_sessions: {
+        Row: {
+          channel: string
+          expires_at: string
+          state: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          channel?: string
+          expires_at?: string
+          state?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          channel?: string
+          expires_at?: string
+          state?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      assistant_usage: {
+        Row: {
+          calls: number
+          day: string
+          provider: string
+          user_id: string
+        }
+        Insert: {
+          calls?: number
+          day: string
+          provider: string
+          user_id: string
+        }
+        Update: {
+          calls?: number
+          day?: string
+          provider?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       audit_log: {
         Row: {
           action: string
@@ -333,6 +475,54 @@ export type Database = {
           },
           {
             foreignKeyName: "categories_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      category_rules: {
+        Row: {
+          category_id: string
+          created_at: string
+          created_by: string | null
+          hits: number
+          id: string
+          pattern: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          created_by?: string | null
+          hits?: number
+          id?: string
+          pattern: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          created_by?: string | null
+          hits?: number
+          id?: string
+          pattern?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "category_rules_category_id_workspace_id_fkey"
+            columns: ["category_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "category_rules_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
@@ -1755,6 +1945,18 @@ export type Database = {
         Args: { p_recurrence_id: string }
         Returns: number
       }
+      assistant_take_quota: {
+        Args: {
+          p_daily_limit: number
+          p_per_minute: number
+          p_provider: string
+        }
+        Returns: {
+          allowed: boolean
+          reason: string
+          used_today: number
+        }[]
+      }
       consume_channel_link_code: {
         Args: {
           p_channel: Database["public"]["Enums"]["channel_kind"]
@@ -1876,7 +2078,13 @@ export type Database = {
       account_type: "checking" | "savings" | "wallet" | "investment" | "other"
       analytics_basis: "accrual" | "cash"
       channel_kind: "whatsapp" | "telegram"
-      entry_source: "manual" | "recurrence" | "import" | "whatsapp" | "telegram"
+      entry_source:
+        | "manual"
+        | "recurrence"
+        | "import"
+        | "whatsapp"
+        | "telegram"
+        | "assistant"
       goal_status: "active" | "paused" | "achieved" | "archived"
       import_format: "csv" | "ofx"
       import_status: "pending" | "processed" | "failed" | "reverted"
@@ -2026,7 +2234,14 @@ export const Constants = {
       account_type: ["checking", "savings", "wallet", "investment", "other"],
       analytics_basis: ["accrual", "cash"],
       channel_kind: ["whatsapp", "telegram"],
-      entry_source: ["manual", "recurrence", "import", "whatsapp", "telegram"],
+      entry_source: [
+        "manual",
+        "recurrence",
+        "import",
+        "whatsapp",
+        "telegram",
+        "assistant",
+      ],
       goal_status: ["active", "paused", "achieved", "archived"],
       import_format: ["csv", "ofx"],
       import_status: ["pending", "processed", "failed", "reverted"],
