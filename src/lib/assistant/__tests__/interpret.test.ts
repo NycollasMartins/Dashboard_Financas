@@ -12,6 +12,15 @@ const deps = (providers: MockParser[], quota = true) => ({
   takeQuota: async () => ({ allowed: quota }),
 });
 
+describe("retirada: motivo só quando dito", () => {
+  it("sem motivo → null (o sistema pergunta); com 'pra …' → motivo", async () => {
+    const a = await interpret("tirei 100 da reserva", deps([]));
+    expect(a.items[0]).toMatchObject({ intent: "retirar_de_meta", goal: "Reserva de emergência", description: null });
+    const b = await interpret("retirei 500 da meta do carro pra pagar o mecanico", deps([]));
+    expect(b.items[0]).toMatchObject({ intent: "retirar_de_meta", goal: "Carro", description: "Pagar o mecanico" });
+  });
+});
+
 describe("pipeline de interpretação", () => {
   it("parser local confiante não chama a IA (economiza cota)", async () => {
     const ai = new MockParser({});

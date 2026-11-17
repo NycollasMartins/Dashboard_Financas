@@ -14,14 +14,18 @@ import { emptyItem, type Interpretation, type NameContext, type ParsedItem, type
 export const CONFIDENT = 0.8;
 
 const RX = {
-  undo: /^(desfaz|desfazer|desfaca|desfazer o ultimo|cancela(r)? (o |a )?ultim[oa]|apaga(r)? (o |a )?ultim[oa]|volta(r)? (o |a )?ultim[oa]|errei|anula(r)? (o |a )?ultim[oa])\b/,
-  help: /^(ajuda|help|menu|comandos|o que (voce|vc) (faz|sabe|pode)|como (funciona|usar|uso)|oi|ola|e ai|bom dia|boa tarde|boa noite|\?)\b/,
-  question: /\b(quanto|qual|quais|como (esta|ta|estao|tao)|mostra|mostrar|ver|me (diz|fala|mostra)|resumo|balanco)\b/,
+  undo: /^(desfaz|desfazer|desfaca|desfazer o ultimo|apaga isso|apaga esse|desfaz isso|volta (o |a )?ultim[oa]|volta isso|cancela(r)? (o |a )?ultim[oa]|apaga(r)? (o |a )?ultim[oa]|volta(r)? (o |a )?ultim[oa]|errei|anula(r)? (o |a )?ultim[oa])\b/,
+  help: /^(ajuda|me ajuda|help|menu|comandos|o que (voce|vc) (faz|sabe|pode)|como (funciona|usar|uso)|oi|ola|e ai|bom dia|boa tarde|boa noite|\?)\b/,
+  question: /\b(quanto|qto|qnt|qual|quais|como (esta|ta|estao|tao)|mostra|mostrar|ver|me (diz|fala|mostra)|resumo|balanco)\b/,
   withdraw: /\b(tirei|retirei|resgatei|saquei|usei|peguei|tire|retire|resgatar|retirar|tirar)\b/,
   save: /\b(guardei|guardar|guarda|guarde|poupei|reservei|separei|apliquei|depositei|botei|coloquei|juntei|economizei)\b/,
-  transfer: /\b(transferi|transfere|transferir|transferencia|passei|mandei|movi|joguei)\b/,
+  // Devolução/estorno é receita mesmo citando "compra".
+  refund: /\b(devolveram|devolucao|estorno|estornaram|reembolso|reembolsaram)\b/,
+  // "botei/coloquei" também servem para gasto ("botei 70 de gasolina"): só valem como meta se a meta for citada.
+  weakSave: /\b(botei|coloquei|depositei|apliquei)\b/,
+  transfer: /\b(transferi|transfere|transferir|transfira|transferencia|passei|passa|passe|mandei|manda|mande|movi|move|joguei)\b/,
   confirmVerb: /^(ja )?(paguei|pago|quitei|recebi|caiu|chegou|confirma(r)?|marca(r)? como pag[oa])\b/,
-  income: /\b(ganhei|recebi|recebido|entrou|caiu|salario|freela|freelance|bico|vendi|reembolso|rendimento|rendeu|me pagaram|me pagou|me deu|me deram|decimo terceiro|13o|bonus|extra|pix recebido)\b/,
+  income: /\b(ganhei|recebi|recebido|entrou|caiu|salario|freela|freelance|bico|vendi|reembolso|reembolsaram|estorno|estornaram|devolveram|devolucao|rendimento|rendeu|me pagaram|me pagou|me deu|me deram|decimo terceiro|13o|bonus|extra|pix recebido)\b/,
   expense: /\b(gastei|gasto|gastar|paguei|pagar|paga|comprei|compra|torrei|custou|deu|foi|abasteci|almocei|jantei|pedi|tomei|comi|lanchei|gastamos|pagamos|compramos)\b/,
   installments: /\b(\d{1,2})\s*x\b|\bem (\d{1,2}) (?:vezes|parcelas|prestacoes)\b|\b(\d{1,2}) parcelas\b/,
   family: /\b(na|da|pra|para a|no espaco da) (familia|casa)\b/,
@@ -45,7 +49,8 @@ const STOP = new Set(
     "recebido entrou caiu vendi me pagaram pagou guardei guardar guarda poupei reservei separei apliquei depositei botei " +
     "coloquei juntei tirei retirei resgatei saquei usei peguei transferi transfere transferir passei mandei movi meta " +
     "familia casa individual pessoal espaco passada passado semana na sexta sabado domingo segunda terca quarta quinta valor total " +
-    "gastamos pagamos compramos lanche comida tava estava ta").split(" "),
+    "gastamos pagamos compramos lanche comida tava estava ta dei demos dando fiz fui fomos pro pros pras tipo uns umas " +
+    "entao assistente oi ola coisa coisinha").split(" "),
 );
 
 function title(s: string) {
@@ -99,10 +104,10 @@ function queryTopic(t: string, ctx: NameContext): { topic: QueryTopic; goal?: st
   if (/\bfatura\b/.test(t)) return { topic: "fatura", card: findNamed(t, ctx.cards)[0]?.n };
   if (/\b(falta|preciso|tenho que|devo) guardar\b|\bquanto guardar\b/.test(t)) return { topic: "falta_guardar" };
   if (goal || /\bmetas?\b/.test(t)) return { topic: "meta", goal };
-  if (/\bsaldo\b|\bquanto (eu )?tenho\b|\bquanto sobrou\b|\bquanto (eu )?ainda tenho\b/.test(t)) return { topic: "saldo" };
+  if (/\bsaldo\b|\bquanto (eu )?tenho\b|\btenho quanto\b|\bquanto sobrou\b|\bquanto (eu )?ainda tenho\b|\bquanto (tem|ta|esta) na\b/.test(t)) return { topic: "saldo" };
   if (/\bquanto (eu )?(ganhei|recebi|entrou)\b|\breceitas?\b/.test(t)) return { topic: "receitas", category: findCategory(t, "income", ctx) ?? undefined };
   if (/\bresumo\b|\bbalanco\b|\bcomo (estou|to|tou|estao|tao) (as )?(financas|contas|gastos)\b/.test(t)) return { topic: "resumo" };
-  if (/\b(gastei|gasto|gastos|gastamos|ja gastei|torrei|despesas?|paguei)\b/.test(t)) return { topic: "gastos", category: findCategory(t, "expense", ctx) ?? undefined };
+  if (/\b(gastei|gasto|gastos|gastamos|ja gastei|torrei|despesas?|paguei)\b|\bquanto (foi|deu|saiu)\b/.test(t)) return { topic: "gastos", category: findCategory(t, "expense", ctx) ?? undefined };
   return null;
 }
 
@@ -129,8 +134,10 @@ function parseSegment(seg: string, verbContext: string, today: ISODate, ctx: Nam
   if (RX.withdraw.test(full) && (goals.length || /\b(meta|reserva|caixinha)\b/.test(seg))) {
     item = { ...emptyItem("retirar_de_meta"), goal: goals[0]?.n ?? null };
     conf += 0.3;
-    item.description = describe(seg.replace(RX.withdraw, " "), ctx, spans);
-  } else if (RX.save.test(full)) {
+    // Motivo só se a pessoa disser ("…pra pagar o mecânico", "…porque o carro quebrou"); senão o sistema pergunta.
+    const why = /\b(?:pra|para|porque|por causa d[oa]|devido a)\s+(.{3,})$/.exec(seg.replace(/^.*?\b(?:da|do|na|no)\s+(?:meta\s+)?(?:d[oa]\s+)?\S+(?:\s+de\s+emergencia)?/, ""));
+    item.description = why ? title(why[1].trim()).slice(0, 120) : null;
+  } else if (RX.save.test(full) && !(RX.weakSave.test(full) && (findCategory(seg, "expense", ctx) || (!goals.length && !/\b(meta|reserva|caixinha)\b/.test(seg))))) {
     let goal: string | null = goals[0]?.n ?? null;
     if (!goal) {
       const m = /\b(?:pra|para|na|no|pro) (?:a |o |meta )?([a-z0-9 ]{3,30})$/.exec(seg.replace(/\s+\d.*$/, "").trim());
@@ -144,11 +151,15 @@ function parseSegment(seg: string, verbContext: string, today: ISODate, ctx: Nam
   } else if (!amount && RX.confirmVerb.test(seg)) {
     item = { ...emptyItem("confirmar_previsto"), description: describe(seg.replace(RX.confirmVerb, " "), ctx, spans) };
     conf += item.description ? 0.35 : 0;
-  } else if (RX.income.test(full) && !RX.expense.test(seg.replace(/\bpagou\b/, ""))) {
+  } else if (RX.refund.test(full) || (RX.income.test(full) && !RX.expense.test(seg.replace(/\b(me |nos )?(pagou|deu|deram|pagaram)\b/g, "")))) {
     item = { ...emptyItem("registrar_receita"), category: findCategory(full, "income", ctx) };
     conf += 0.3;
     if (item.category) conf += 0.1;
   } else {
+    if (!amount && !RX.expense.test(full)) {
+      // Sem valor e sem verbo de gasto: não é um gasto — devolve "não entendi" (ou a IA tenta).
+      return { item: emptyItem("ajuda"), confidence: 0.2 };
+    }
     const parcelada = installments !== null && installments >= 2;
     item = { ...emptyItem(parcelada ? "registrar_compra_parcelada" : "registrar_despesa"), installments: parcelada ? installments : null };
     item.category = findCategory(seg, "expense", ctx) ?? findCategory(full, "expense", ctx);
@@ -214,6 +225,14 @@ export function parseLocal(text: string, today: ISODate, ctx: NameContext): Inte
       if (findAmounts(p).length) withAmount.push(p);
       else if (withAmount.length) withAmount[withAmount.length - 1] += ` ${p}`;
       else withAmount.push(p);
+    }
+    // Sem separadores ("40 de luz 60 de agua"): corta antes de cada valor.
+    if (withAmount.filter((p) => findAmounts(p).length).length < amounts.length) {
+      withAmount.length = 0;
+      amounts.forEach((a, i) => {
+        const end = i + 1 < amounts.length ? amounts[i + 1].start : t.length;
+        withAmount.push(t.slice(i === 0 ? 0 : a.start, end).replace(/\s+e\s*$/, "").trim());
+      });
     }
     if (withAmount.filter((p) => findAmounts(p).length).length > 1) {
       // Texto antes do 1º valor sem valor próprio ("gastei") vira contexto, não item.

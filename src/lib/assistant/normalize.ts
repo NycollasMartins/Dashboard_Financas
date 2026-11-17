@@ -42,6 +42,7 @@ export function normalize(text: string): string {
     .replace(/\bsuper mercado\b/g, "supermercado")
     // "99" é o app de transporte quando vem com "pop/taxi/pra/ate" e há outro valor na frase.
     .replace(/\b99 ?(pop|taxi)\b/g, "app99")
+    .replace(/\b(um|uns|o|no|de) 99\b(?=.*\d)/g, "$1 app99")
     .replace(/\b99 (?=(pra|para|ate|de volta|do|da)\b.*\d)/g, "app99 ");
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DATASET, EVAL_CONTEXT, EVAL_TODAY } from "../eval/dataset";
+import { DATASET, EVAL_CONTEXT, EVAL_TODAY, HOLDOUT } from "../eval/dataset";
 import { printReport, scoreCase, summarize } from "../eval/score";
 import { parseLocal } from "../local-parser";
 
@@ -20,4 +20,14 @@ describe("avaliação do parser local", () => {
   it("acerta o valor", () => expect(report.fieldAccuracy.amount!.pct).toBeGreaterThanOrEqual(95));
   it("quando está confiante, quase nunca erra (senão a IA nem seria chamada)", () =>
     expect(report.precisionWhenConfident).toBeGreaterThanOrEqual(95));
+});
+
+describe("holdout (40 mensagens não usadas para ajustar o parser)", () => {
+  const report = summarize(HOLDOUT.map(([text, exp]) => scoreCase(text, exp, parseLocal(text, EVAL_TODAY, EVAL_CONTEXT))));
+  if (process.env.EVAL_VERBOSE) {
+    printReport("Parser local — HOLDOUT", report);
+    for (const f of report.failures) console.log(`✗ ${f.text}  →  ${f.got}${f.confident ? "  (CONFIANTE)" : ""}`);
+  }
+  // Piso para pegar regressões grosseiras; o número real vai para o README.
+  it("piso de acerto de intenção", () => expect(report.intentAccuracy).toBeGreaterThanOrEqual(60));
 });

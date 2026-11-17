@@ -225,3 +225,51 @@ export const DATASET: [string, Expect][] = [
   ["paguei o seguro do carro 2100", { intent: D, amount: 2100 }],
   ["paguei 40 na lavagem do carro", { intent: D, amount: 40 }],
 ];
+
+/*
+ * HOLDOUT: 40 mensagens escritas DEPOIS do parser pronto e NÃO usadas para
+ * ajustá-lo. É a medida mais honesta da camada local (o conjunto principal
+ * tem viés: foi escrito junto com o parser).
+ */
+export const HOLDOUT: [string, Expect][] = [
+  ["botei 70 de gasolina no carro", { intent: D, amount: 70, category: "Transporte" }],
+  ["mandei 25 pro motoboy", { intent: D, amount: 25 }],
+  ["paguei 89 na conta do celular", { intent: D, amount: 89, category: "Contas e serviços" }],
+  ["comprei remedio pra gripe 34,90", { intent: D, amount: 34.9, category: "Saúde" }],
+  ["saiu 210 o mercado hoje", { intent: D, amount: 210, category: "Mercado", date: "2026-11-17" }],
+  ["gastei uns 60 conto no boteco ontem", { intent: D, amount: 60, category: "Lazer", date: "2026-11-16" }],
+  ["uber pro trabalho 19,80", { intent: D, amount: 19.8, category: "Transporte" }],
+  ["pizza de sexta 85 reais", { intent: D, amount: 85, category: "Restaurantes e delivery" }],
+  ["netflix e spotify 77,80", { intent: D, amount: 77.8, category: "Assinaturas" }],
+  ["mensalidade da academia 120 no debito", { intent: D, amount: 120, category: "Saúde", payment: "debit" }],
+  ["comprei uma camiseta de 59 no credito", { intent: D, amount: 59, payment: "credit" }],
+  ["ifood ontem 62", { intent: D, amount: 62, category: "Restaurantes e delivery", date: "2026-11-16" }],
+  ["peguei um 99 de 27", { intent: D, amount: 27, category: "Transporte" }],
+  ["corte de cabelo 40 no pix", { intent: D, amount: 40, category: "Cuidados pessoais", payment: "pix" }],
+  ["dois mil de aluguel", { intent: D, amount: 2000, category: "Moradia" }],
+  ["recebi 350 de um freela de design", { intent: R, amount: 350, category: "Freelance" }],
+  ["minha vó me deu 100", { intent: R, amount: 100 }],
+  ["caiu 5.200 de salario hoje", { intent: R, amount: 5200, category: "Salário" }],
+  ["vendi um fone usado por 120", { intent: R, amount: 120, category: "Outras receitas" }],
+  ["devolveram 49,90 da compra", { intent: R, amount: 49.9 }],
+  ["comprei um ar condicionado 2.800 em 12 vezes no inter", { intent: P, amount: 2800, installments: 12, card: "Inter" }],
+  ["parcelei a passagem em 5x de 400", { intent: P, installments: 5 }],
+  ["celular 1.999 6x nubank", { intent: P, amount: 1999, installments: 6, card: "Nubank" }],
+  ["guarda 200 na viagem", { intent: "guardar_em_meta", amount: 200, goal: "Viagem" }],
+  ["reservei 400 pro carro esse mes", { intent: "guardar_em_meta", amount: 400, goal: "Carro" }],
+  ["tirei 150 da viagem pra pagar o hotel", { intent: "retirar_de_meta", amount: 150, goal: "Viagem" }],
+  ["passa 300 da poupança pra conta nubank", { intent: "transferir", amount: 300, account: "Poupança", toAccount: "Conta Nubank" }],
+  ["ja paguei o condominio", { intent: "confirmar_previsto" }],
+  ["recebi o freela que tava previsto", { intent: "confirmar_previsto" }],
+  ["quanto foi o mercado esse mes?", { intent: "consultar", topic: "gastos", category: "Mercado" }],
+  ["quanto eu gastei ontem", { intent: "consultar", topic: "gastos" }],
+  ["tenho quanto na poupança?", { intent: "consultar", topic: "saldo" }],
+  ["quanto ta a fatura do inter", { intent: "consultar", topic: "fatura", card: "Inter" }],
+  ["quanto falta pro carro", { intent: "consultar", topic: "meta", goal: "Carro" }],
+  ["resumo", { intent: "consultar", topic: "resumo" }],
+  ["apaga isso", { intent: "desfazer_ultimo" }],
+  ["volta o ultimo", { intent: "desfazer_ultimo" }],
+  ["me ajuda", { intent: "ajuda" }],
+  ["uber 18 e padaria 9", { intent: [D, D], amount: [18, 9] }],
+  ["gastei 40 de luz 60 de agua e 120 de internet", { intent: [D, D, D], amount: [40, 60, 120] }],
+];

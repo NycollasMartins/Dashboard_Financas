@@ -60,8 +60,8 @@ export function findAmounts(text: string): AmountMatch[] {
     if (!suffix && /^[a-z]/.test(text.slice(end, end + 1))) continue;
     if (/[a-z]$/.test(text.slice(Math.max(0, start - 1), start))) continue;
     const before = text.slice(Math.max(0, start - 6), start);
-    const after = text.slice(end, end + 8);
-    if (/^\s*(x\b|vezes)/.test(after) && !currency) continue; // parcelas
+    const after = text.slice(end, end + 16);
+    if (/^\s*(x\b|vezes|parcelas|prestacoes)/.test(after) && !currency) continue; // parcelas
     if (/(dia|dias|em)\s*$/.test(before) && !currency && !suffix && /^\s*(x|vezes|\/|de\s+(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez))/.test(after + " ")) continue;
     if (/dia\s*$/.test(before) && !currency && !suffix) continue; // "dia 5"
     if (/^\/\d/.test(after) || /\d\/$/.test(before)) continue; // datas 05/11
