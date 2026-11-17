@@ -1115,6 +1115,15 @@ export type Database = {
         }
         Returns: string
       }
+      delete_my_account: { Args: never; Returns: undefined }
+      get_account_deletion_blockers: {
+        Args: never
+        Returns: {
+          other_members: number
+          workspace_id: string
+          workspace_name: string
+        }[]
+      }
       get_invite_preview: {
         Args: { p_token: string }
         Returns: {
@@ -1141,6 +1150,10 @@ export type Database = {
       hit_rate_limit: {
         Args: { p_key: string; p_max: number; p_window_seconds: number }
         Returns: boolean
+      }
+      transfer_workspace_ownership: {
+        Args: { p_new_owner: string; p_workspace_id: string }
+        Returns: undefined
       }
     }
     Enums: {
