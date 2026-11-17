@@ -87,6 +87,42 @@ export type Database = {
           },
         ]
       }
+      audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          at: string
+          id: number
+          new_data: Json | null
+          old_data: Json | null
+          record_id: string
+          table_name: string
+          workspace_id: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          at?: string
+          id?: never
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id: string
+          table_name: string
+          workspace_id: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          at?: string
+          id?: never
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id?: string
+          table_name?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       bot_messages: {
         Row: {
           body: string | null
@@ -200,11 +236,7 @@ export type Database = {
           created_at: string
           due_date: string
           id: string
-          paid_amount_cents: number | null
-          paid_at: string | null
-          paid_from_account_id: string | null
           reference_month: string
-          status: Database["public"]["Enums"]["invoice_status"]
           updated_at: string
           workspace_id: string
         }
@@ -214,11 +246,7 @@ export type Database = {
           created_at?: string
           due_date: string
           id?: string
-          paid_amount_cents?: number | null
-          paid_at?: string | null
-          paid_from_account_id?: string | null
           reference_month: string
-          status?: Database["public"]["Enums"]["invoice_status"]
           updated_at?: string
           workspace_id: string
         }
@@ -228,11 +256,7 @@ export type Database = {
           created_at?: string
           due_date?: string
           id?: string
-          paid_amount_cents?: number | null
-          paid_at?: string | null
-          paid_from_account_id?: string | null
           reference_month?: string
-          status?: Database["public"]["Enums"]["invoice_status"]
           updated_at?: string
           workspace_id?: string
         }
@@ -241,14 +265,14 @@ export type Database = {
             foreignKeyName: "card_invoices_card_id_workspace_id_fkey"
             columns: ["card_id", "workspace_id"]
             isOneToOne: false
-            referencedRelation: "credit_cards"
-            referencedColumns: ["id", "workspace_id"]
+            referencedRelation: "credit_card_summaries"
+            referencedColumns: ["card_id", "workspace_id"]
           },
           {
-            foreignKeyName: "card_invoices_paid_from_account_id_workspace_id_fkey"
-            columns: ["paid_from_account_id", "workspace_id"]
+            foreignKeyName: "card_invoices_card_id_workspace_id_fkey"
+            columns: ["card_id", "workspace_id"]
             isOneToOne: false
-            referencedRelation: "accounts"
+            referencedRelation: "credit_cards"
             referencedColumns: ["id", "workspace_id"]
           },
         ]
@@ -264,6 +288,7 @@ export type Database = {
           is_default: boolean
           kind: Database["public"]["Enums"]["transaction_kind"]
           name: string
+          parent_id: string | null
           sort_order: number
           updated_at: string
           workspace_id: string
@@ -278,6 +303,7 @@ export type Database = {
           is_default?: boolean
           kind: Database["public"]["Enums"]["transaction_kind"]
           name: string
+          parent_id?: string | null
           sort_order?: number
           updated_at?: string
           workspace_id: string
@@ -292,11 +318,19 @@ export type Database = {
           is_default?: boolean
           kind?: Database["public"]["Enums"]["transaction_kind"]
           name?: string
+          parent_id?: string | null
           sort_order?: number
           updated_at?: string
           workspace_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "categories_parent_fk"
+            columns: ["parent_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id", "workspace_id"]
+          },
           {
             foreignKeyName: "categories_workspace_id_fkey"
             columns: ["workspace_id"]
@@ -487,6 +521,13 @@ export type Database = {
             foreignKeyName: "goal_contributions_account_id_workspace_id_fkey"
             columns: ["account_id", "workspace_id"]
             isOneToOne: false
+            referencedRelation: "account_balances"
+            referencedColumns: ["account_id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "goal_contributions_account_id_workspace_id_fkey"
+            columns: ["account_id", "workspace_id"]
+            isOneToOne: false
             referencedRelation: "accounts"
             referencedColumns: ["id", "workspace_id"]
           },
@@ -603,8 +644,22 @@ export type Database = {
             foreignKeyName: "import_batches_account_id_workspace_id_fkey"
             columns: ["account_id", "workspace_id"]
             isOneToOne: false
+            referencedRelation: "account_balances"
+            referencedColumns: ["account_id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "import_batches_account_id_workspace_id_fkey"
+            columns: ["account_id", "workspace_id"]
+            isOneToOne: false
             referencedRelation: "accounts"
             referencedColumns: ["id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "import_batches_card_id_workspace_id_fkey"
+            columns: ["card_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "credit_card_summaries"
+            referencedColumns: ["card_id", "workspace_id"]
           },
           {
             foreignKeyName: "import_batches_card_id_workspace_id_fkey"
@@ -670,6 +725,13 @@ export type Database = {
             foreignKeyName: "installment_plans_card_id_workspace_id_fkey"
             columns: ["card_id", "workspace_id"]
             isOneToOne: false
+            referencedRelation: "credit_card_summaries"
+            referencedColumns: ["card_id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "installment_plans_card_id_workspace_id_fkey"
+            columns: ["card_id", "workspace_id"]
+            isOneToOne: false
             referencedRelation: "credit_cards"
             referencedColumns: ["id", "workspace_id"]
           },
@@ -682,6 +744,75 @@ export type Database = {
           },
           {
             foreignKeyName: "installment_plans_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_payments: {
+        Row: {
+          account_id: string | null
+          amount_cents: number
+          created_at: string
+          created_by: string | null
+          id: string
+          invoice_id: string
+          paid_on: string
+          workspace_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          amount_cents: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_id: string
+          paid_on: string
+          workspace_id: string
+        }
+        Update: {
+          account_id?: string | null
+          amount_cents?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_id?: string
+          paid_on?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_payments_account_id_workspace_id_fkey"
+            columns: ["account_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "account_balances"
+            referencedColumns: ["account_id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "invoice_payments_account_id_workspace_id_fkey"
+            columns: ["account_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "invoice_payments_invoice_id_workspace_id_fkey"
+            columns: ["invoice_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "card_invoice_summaries"
+            referencedColumns: ["invoice_id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "invoice_payments_invoice_id_workspace_id_fkey"
+            columns: ["invoice_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "card_invoices"
+            referencedColumns: ["id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "invoice_payments_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
@@ -746,6 +877,7 @@ export type Database = {
         Row: {
           account_id: string | null
           amount_cents: number
+          auto_confirm: boolean
           card_id: string | null
           category_id: string | null
           created_at: string
@@ -753,10 +885,11 @@ export type Database = {
           day_of_month: number
           description: string
           ends_on: string | null
+          frequency: Database["public"]["Enums"]["recurrence_frequency"]
           id: string
           is_active: boolean
           kind: Database["public"]["Enums"]["transaction_kind"]
-          last_generated_month: string | null
+          last_generated_on: string | null
           member_user_id: string | null
           payment_method: Database["public"]["Enums"]["payment_method"]
           starts_on: string
@@ -766,6 +899,7 @@ export type Database = {
         Insert: {
           account_id?: string | null
           amount_cents: number
+          auto_confirm?: boolean
           card_id?: string | null
           category_id?: string | null
           created_at?: string
@@ -773,10 +907,11 @@ export type Database = {
           day_of_month: number
           description: string
           ends_on?: string | null
+          frequency?: Database["public"]["Enums"]["recurrence_frequency"]
           id?: string
           is_active?: boolean
           kind: Database["public"]["Enums"]["transaction_kind"]
-          last_generated_month?: string | null
+          last_generated_on?: string | null
           member_user_id?: string | null
           payment_method?: Database["public"]["Enums"]["payment_method"]
           starts_on: string
@@ -786,6 +921,7 @@ export type Database = {
         Update: {
           account_id?: string | null
           amount_cents?: number
+          auto_confirm?: boolean
           card_id?: string | null
           category_id?: string | null
           created_at?: string
@@ -793,10 +929,11 @@ export type Database = {
           day_of_month?: number
           description?: string
           ends_on?: string | null
+          frequency?: Database["public"]["Enums"]["recurrence_frequency"]
           id?: string
           is_active?: boolean
           kind?: Database["public"]["Enums"]["transaction_kind"]
-          last_generated_month?: string | null
+          last_generated_on?: string | null
           member_user_id?: string | null
           payment_method?: Database["public"]["Enums"]["payment_method"]
           starts_on?: string
@@ -808,8 +945,22 @@ export type Database = {
             foreignKeyName: "recurrences_account_id_workspace_id_fkey"
             columns: ["account_id", "workspace_id"]
             isOneToOne: false
+            referencedRelation: "account_balances"
+            referencedColumns: ["account_id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "recurrences_account_id_workspace_id_fkey"
+            columns: ["account_id", "workspace_id"]
+            isOneToOne: false
             referencedRelation: "accounts"
             referencedColumns: ["id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "recurrences_card_id_workspace_id_fkey"
+            columns: ["card_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "credit_card_summaries"
+            referencedColumns: ["card_id", "workspace_id"]
           },
           {
             foreignKeyName: "recurrences_card_id_workspace_id_fkey"
@@ -856,10 +1007,11 @@ export type Database = {
           notes: string | null
           occurred_on: string
           payment_method: Database["public"]["Enums"]["payment_method"]
+          recurrence_date: string | null
           recurrence_id: string | null
-          recurrence_month: string | null
           source: Database["public"]["Enums"]["entry_source"]
           updated_at: string
+          updated_by: string | null
           workspace_id: string
         }
         Insert: {
@@ -883,10 +1035,11 @@ export type Database = {
           notes?: string | null
           occurred_on: string
           payment_method: Database["public"]["Enums"]["payment_method"]
+          recurrence_date?: string | null
           recurrence_id?: string | null
-          recurrence_month?: string | null
           source?: Database["public"]["Enums"]["entry_source"]
           updated_at?: string
+          updated_by?: string | null
           workspace_id: string
         }
         Update: {
@@ -910,10 +1063,11 @@ export type Database = {
           notes?: string | null
           occurred_on?: string
           payment_method?: Database["public"]["Enums"]["payment_method"]
+          recurrence_date?: string | null
           recurrence_id?: string | null
-          recurrence_month?: string | null
           source?: Database["public"]["Enums"]["entry_source"]
           updated_at?: string
+          updated_by?: string | null
           workspace_id?: string
         }
         Relationships: [
@@ -921,8 +1075,22 @@ export type Database = {
             foreignKeyName: "transactions_account_id_workspace_id_fkey"
             columns: ["account_id", "workspace_id"]
             isOneToOne: false
+            referencedRelation: "account_balances"
+            referencedColumns: ["account_id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "transactions_account_id_workspace_id_fkey"
+            columns: ["account_id", "workspace_id"]
+            isOneToOne: false
             referencedRelation: "accounts"
             referencedColumns: ["id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "transactions_card_id_workspace_id_fkey"
+            columns: ["card_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "credit_card_summaries"
+            referencedColumns: ["card_id", "workspace_id"]
           },
           {
             foreignKeyName: "transactions_card_id_workspace_id_fkey"
@@ -956,6 +1124,13 @@ export type Database = {
             foreignKeyName: "transactions_invoice_id_card_id_fkey"
             columns: ["invoice_id", "card_id"]
             isOneToOne: false
+            referencedRelation: "card_invoice_summaries"
+            referencedColumns: ["invoice_id", "card_id"]
+          },
+          {
+            foreignKeyName: "transactions_invoice_id_card_id_fkey"
+            columns: ["invoice_id", "card_id"]
+            isOneToOne: false
             referencedRelation: "card_invoices"
             referencedColumns: ["id", "card_id"]
           },
@@ -968,6 +1143,81 @@ export type Database = {
           },
           {
             foreignKeyName: "transactions_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transfers: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          created_by: string | null
+          description: string | null
+          from_account_id: string
+          id: string
+          occurred_on: string
+          to_account_id: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          from_account_id: string
+          id?: string
+          occurred_on: string
+          to_account_id: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          from_account_id?: string
+          id?: string
+          occurred_on?: string
+          to_account_id?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transfers_from_account_id_workspace_id_fkey"
+            columns: ["from_account_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "account_balances"
+            referencedColumns: ["account_id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "transfers_from_account_id_workspace_id_fkey"
+            columns: ["from_account_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "transfers_to_account_id_workspace_id_fkey"
+            columns: ["to_account_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "account_balances"
+            referencedColumns: ["account_id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "transfers_to_account_id_workspace_id_fkey"
+            columns: ["to_account_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "transfers_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
@@ -1089,16 +1339,134 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      account_balances: {
+        Row: {
+          account_id: string | null
+          archived_at: string | null
+          balance_cents: number | null
+          color: string | null
+          initial_balance_cents: number | null
+          name: string | null
+          pending_cents: number | null
+          type: Database["public"]["Enums"]["account_type"] | null
+          workspace_id: string | null
+        }
+        Insert: {
+          account_id?: string | null
+          archived_at?: string | null
+          balance_cents?: never
+          color?: string | null
+          initial_balance_cents?: number | null
+          name?: string | null
+          pending_cents?: never
+          type?: Database["public"]["Enums"]["account_type"] | null
+          workspace_id?: string | null
+        }
+        Update: {
+          account_id?: string | null
+          archived_at?: string | null
+          balance_cents?: never
+          color?: string | null
+          initial_balance_cents?: number | null
+          name?: string | null
+          pending_cents?: never
+          type?: Database["public"]["Enums"]["account_type"] | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accounts_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      card_invoice_summaries: {
+        Row: {
+          card_id: string | null
+          closing_date: string | null
+          due_date: string | null
+          invoice_id: string | null
+          items: number | null
+          paid_cents: number | null
+          reference_month: string | null
+          remaining_cents: number | null
+          status: string | null
+          total_cents: number | null
+          workspace_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_invoices_card_id_workspace_id_fkey"
+            columns: ["card_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "credit_card_summaries"
+            referencedColumns: ["card_id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "card_invoices_card_id_workspace_id_fkey"
+            columns: ["card_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "credit_cards"
+            referencedColumns: ["id", "workspace_id"]
+          },
+        ]
+      }
+      credit_card_summaries: {
+        Row: {
+          archived_at: string | null
+          available_cents: number | null
+          brand: string | null
+          card_id: string | null
+          closing_day: number | null
+          color: string | null
+          due_day: number | null
+          last4: string | null
+          limit_cents: number | null
+          name: string | null
+          used_cents: number | null
+          workspace_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_cards_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       accept_workspace_invite: { Args: { p_token: string }; Returns: string }
+      apply_recurrence_to_future: {
+        Args: { p_recurrence_id: string }
+        Returns: number
+      }
       consume_channel_link_code: {
         Args: {
           p_channel: Database["public"]["Enums"]["channel_kind"]
           p_code: string
           p_display_label?: string
           p_external_id: string
+        }
+        Returns: string
+      }
+      create_card_purchase: {
+        Args: {
+          p_card_id: string
+          p_category_id?: string
+          p_description: string
+          p_installments: number
+          p_member_user_id?: string
+          p_notes?: string
+          p_occurred_on: string
+          p_source?: Database["public"]["Enums"]["entry_source"]
+          p_total_cents: number
+          p_workspace_id: string
         }
         Returns: string
       }
@@ -1115,7 +1483,19 @@ export type Database = {
         }
         Returns: string
       }
+      delete_category: {
+        Args: { p_category_id: string; p_reassign_to?: string }
+        Returns: undefined
+      }
+      delete_installments: {
+        Args: { p_scope: string; p_transaction_id: string }
+        Returns: number
+      }
       delete_my_account: { Args: never; Returns: undefined }
+      generate_workspace_recurrences: {
+        Args: { p_workspace_id: string }
+        Returns: number
+      }
       get_account_deletion_blockers: {
         Args: never
         Returns: {
@@ -1151,9 +1531,24 @@ export type Database = {
         Args: { p_key: string; p_max: number; p_window_seconds: number }
         Returns: boolean
       }
+      restore_deleted_transaction: {
+        Args: { p_transaction_id: string }
+        Returns: string
+      }
       transfer_workspace_ownership: {
         Args: { p_new_owner: string; p_workspace_id: string }
         Returns: undefined
+      }
+      update_installments: {
+        Args: {
+          p_category_id: string
+          p_description: string
+          p_member_user_id: string
+          p_notes: string
+          p_scope: string
+          p_transaction_id: string
+        }
+        Returns: number
       }
     }
     Enums: {
@@ -1163,7 +1558,6 @@ export type Database = {
       goal_status: "active" | "achieved" | "archived"
       import_format: "csv" | "ofx"
       import_status: "pending" | "processed" | "failed" | "reverted"
-      invoice_status: "open" | "closed" | "paid"
       member_role: "admin" | "member"
       message_direction: "in" | "out"
       payment_method:
@@ -1174,6 +1568,7 @@ export type Database = {
         | "transfer"
         | "boleto"
         | "other"
+      recurrence_frequency: "weekly" | "monthly" | "yearly"
       transaction_kind: "income" | "expense"
       workspace_kind: "personal" | "household"
     }
@@ -1312,7 +1707,6 @@ export const Constants = {
       goal_status: ["active", "achieved", "archived"],
       import_format: ["csv", "ofx"],
       import_status: ["pending", "processed", "failed", "reverted"],
-      invoice_status: ["open", "closed", "paid"],
       member_role: ["admin", "member"],
       message_direction: ["in", "out"],
       payment_method: [
@@ -1324,6 +1718,7 @@ export const Constants = {
         "boleto",
         "other",
       ],
+      recurrence_frequency: ["weekly", "monthly", "yearly"],
       transaction_kind: ["income", "expense"],
       workspace_kind: ["personal", "household"],
     },

@@ -29,3 +29,10 @@ describe("datas (America/Sao_Paulo)", () => {
     expect(formatMonth("2026-11-01")).toBe("novembro de 2026");
   });
 });
+
+describe("fuso de São Paulo perto da meia-noite", () => {
+  it("23:59 de 31/12 em SP ainda é o ano velho", () => {
+    expect(todayISO(new Date("2027-01-01T02:59:00Z"))).toBe("2026-12-31");
+    expect(todayISO(new Date("2027-01-01T03:00:00Z"))).toBe("2027-01-01");
+  });
+});
