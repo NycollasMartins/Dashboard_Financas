@@ -12,6 +12,10 @@ export { SelectField } from "./select-field";
 const EntrySheetContent = dynamic(() => import("./entry-form"), { ssr: false });
 
 export type EntryDraft = {
+  /** "goal" = folha de "Guardar para meta" (aporte/retirada). */
+  mode?: "goal";
+  goalId?: string;
+  goalKind?: "deposit" | "withdrawal";
   id?: string;
   type?: "transaction" | "transfer";
   kind?: "expense" | "income" | "transfer";

@@ -1,4 +1,5 @@
 import {
+  Compass,
   CreditCard,
   Ellipsis,
   LayoutDashboard,
@@ -27,22 +28,23 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/contas", label: "Contas", icon: Wallet },
   { href: "/recorrencias", label: "Recorrências", icon: Repeat },
   { href: "/categorias", label: "Categorias", icon: Tags },
-  { href: "/metas", label: "Metas", icon: Target, comingInPhase: 4 },
+  { href: "/metas", label: "Metas", icon: Target },
+  { href: "/planejamento", label: "Planejamento", icon: Compass },
   { href: "/familia", label: "Família", icon: Users },
   { href: "/configuracoes", label: "Configurações", icon: Settings },
 ];
 
 const byHref = (h: string) => NAV_ITEMS.find((i) => i.href === h)!;
 
-/** Barra inferior do celular: 4 itens + botão central de lançamento. */
+/** Barra inferior do celular: 4 itens + botão central de lançamento. Metas é o coração do produto (Fase 4). */
 export const MOBILE_NAV: NavItem[] = [
   byHref("/painel"),
   byHref("/lancamentos"),
-  byHref("/cartoes"),
+  byHref("/metas"),
   { href: "/mais", label: "Mais", icon: Ellipsis },
 ];
 
 /** Itens que ficam na tela "Mais" do celular. */
 export const MORE_ITEMS: NavItem[] = NAV_ITEMS.filter(
-  (i) => !["/painel", "/lancamentos", "/cartoes"].includes(i.href),
+  (i) => !["/painel", "/lancamentos", "/metas"].includes(i.href),
 );

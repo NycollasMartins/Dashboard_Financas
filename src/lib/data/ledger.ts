@@ -44,7 +44,20 @@ export type CardOption = {
 };
 export type MemberOption = { id: string; name: string; email: string; role: "admin" | "member"; isOwner: boolean };
 
+export type GoalOption = {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  savedCents: number;
+  targetCents: number;
+  status: string;
+  planAccountId: string | null;
+  reserveAccountId: string | null;
+};
+
 export type LedgerLookups = {
+  goals: GoalOption[];
   categories: CategoryOption[];
   accounts: AccountOption[];
   cards: CardOption[];
@@ -56,7 +69,7 @@ export const getLedgerLookups = cache(async (workspaceId: string, userId: string
   const supabase = await createClient();
   const since = addMonths(`${todayISO().slice(0, 7)}-01` as ISODate, -3);
 
-  const [cats, usage, accounts, cards, members, last] = await Promise.all([
+  const [cats, usage, accounts, cards, members, last, goals] = await Promise.all([
     supabase
       .from("categories")
       .select("id, kind, name, icon, color, parent_id, archived_at, sort_order")
@@ -91,8 +104,16 @@ export const getLedgerLookups = cache(async (workspaceId: string, userId: string
       .eq("source", "manual")
       .order("created_at", { ascending: false })
       .limit(1),
+    // Metas para "Guardar para meta": a usada por último primeiro (padrão inteligente).
+    supabase
+      .from("goal_summaries")
+      .select("goal_id, name, icon, color, saved_cents, target_cents, status, plan_account_id, reserve_account_id, last_contribution_on")
+      .eq("workspace_id", workspaceId)
+      .in("status", ["active", "paused", "achieved"])
+      .order("last_contribution_on", { ascending: false, nullsFirst: false })
+      .order("priority"),
   ]);
-  for (const r of [cats, usage, accounts, cards, members, last]) if (r.error) throw r.error;
+  for (const r of [cats, usage, accounts, cards, members, last, goals]) if (r.error) throw r.error;
 
   const counts = new Map<string, number>();
   for (const u of usage.data ?? []) counts.set(u.category_id!, (counts.get(u.category_id!) ?? 0) + 1);
@@ -129,6 +150,17 @@ export const getLedgerLookups = cache(async (workspaceId: string, userId: string
       limitCents: c.limit_cents,
       usedCents: c.used_cents ?? 0,
       availableCents: c.available_cents,
+    })),
+    goals: (goals.data ?? []).map((g) => ({
+      id: g.goal_id!,
+      name: g.name ?? "",
+      icon: g.icon ?? "target",
+      color: g.color ?? "#5eead4",
+      savedCents: g.saved_cents ?? 0,
+      targetCents: g.target_cents ?? 0,
+      status: g.status ?? "active",
+      planAccountId: g.plan_account_id,
+      reserveAccountId: g.reserve_account_id,
     })),
     members: (members.data ?? []).map((m) => ({
       id: m.user_id,

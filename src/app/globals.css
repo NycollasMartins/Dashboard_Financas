@@ -292,3 +292,9 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Confete da celebração de meta concluída (desligado por prefers-reduced-motion) */
+@keyframes confetti {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(110vh) rotate(540deg); opacity: 0.2; }
+}

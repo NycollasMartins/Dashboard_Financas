@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { ArrowDownRight, ArrowLeftRight, ArrowUpRight, ChevronDown, CreditCard, Loader2, Trash2 } from "lucide-react";
+import { ArrowDownRight, ArrowLeftRight, ArrowUpRight, ChevronDown, CreditCard, Loader2, PiggyBank, Trash2 } from "lucide-react";
 import {
   deleteEntryAction,
   deleteInstallmentsAction,
@@ -27,6 +27,8 @@ import { MoneyInput } from "./money-input";
 
 import type { EntryDraft } from "./entry-sheet";
 import { SelectField } from "./select-field";
+import { ContributionForm } from "@/components/goals/contribution-form";
+import { useEntrySheet } from "./entry-sheet";
 
 /*
  * Conteúdo da folha de lançamento (formulário completo + editor de parcelas).
@@ -51,6 +53,21 @@ export default function EntrySheetContent({
 }) {
   const editing = Boolean(draft.id);
   const isInstallment = Boolean(draft.installmentTotal);
+  if (draft.mode === "goal") {
+    return (
+      <SheetContent scroll={false} title={draft.goalKind === "withdrawal" ? "Retirar da meta" : "Guardar para meta"}>
+        <ContributionForm
+          key={formKey}
+          workspaceId={workspaceId}
+          lookups={lookups}
+          today={today}
+          goalId={draft.goalId}
+          initialKind={draft.goalKind}
+          onDone={onDone}
+        />
+      </SheetContent>
+    );
+  }
   return (
     <SheetContent
       scroll={isInstallment}
@@ -91,6 +108,7 @@ function EntryForm({
 }) {
   const editing = Boolean(draft.id);
   const [state, action, pending] = useActionState(saveEntryAction, idleState);
+  const { open: openSheet } = useEntrySheet();
   const [kind, setKind] = useState<"expense" | "income" | "transfer">(draft.kind ?? "expense");
   const [amount, setAmount] = useState(draft.amountCents ?? 0);
   const [categoryId, setCategoryId] = useState<string | null>(draft.categoryId ?? null);
@@ -195,6 +213,15 @@ function EntryForm({
           </button>
         ))}
       </div>
+      {!editing && lookups.goals.length > 0 && (
+        <button
+          type="button"
+          onClick={() => openSheet({ mode: "goal" })}
+          className="-mt-2 flex h-11 items-center justify-center gap-2 rounded-xl border border-dashed text-sm font-medium text-savings hover:bg-savings-muted"
+        >
+          <PiggyBank className="size-4" /> Guardar para meta
+        </button>
+      )}
 
       <MoneyInput
         name="amountCents"

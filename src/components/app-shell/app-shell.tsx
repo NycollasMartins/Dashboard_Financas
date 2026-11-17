@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Logo, LogoMark } from "@/components/brand/logo";
 import { EntrySheetProvider } from "@/components/ledger/entry-sheet";
+import { Celebration } from "@/components/goals/celebration";
 import { PrivacyProvider, PrivacyToggle } from "@/components/privacy/privacy";
 import { getLedgerLookups } from "@/lib/data/ledger";
 import { todayISO } from "@/lib/dates";
@@ -57,6 +58,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       </main>
 
       <MobileBottomNav />
+      <Celebration />
     </div>
     </EntrySheetProvider>
     </PrivacyProvider>
