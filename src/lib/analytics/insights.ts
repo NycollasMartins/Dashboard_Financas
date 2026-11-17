@@ -139,6 +139,6 @@ export function buildInsights(input: InsightInput, limit = 4): Insight[] {
   return out
     .sort((a, b) => b.weight - a.weight)
     .slice(0, limit)
-    .map(({ weight: _w, ...i }) => i)
+    .map((i): Insight => ({ id: i.id, tone: i.tone, text: i.text, privateText: i.privateText, href: i.href }))
     .map((i) => (i.privateText.includes("R$") ? { ...i, privateText: i.privateText.replace(/-?R\$\s?[\d.,]+/g, HIDDEN) } : i));
 }
