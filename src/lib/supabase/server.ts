@@ -1,8 +1,10 @@
 import "server-only";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { connection } from "next/server";
 import { publicEnv } from "@/lib/env";
 import type { Database } from "./database.types";
+import { fetchWithClockSkewRetry } from "./fetch-with-clock-skew-retry";
 
 /**
  * Cliente Supabase para Server Components, Server Actions e Route Handlers.
@@ -10,12 +12,16 @@ import type { Database } from "./database.types";
  * Crie um novo cliente por requisição (nunca reutilize entre requisições).
  */
 export async function createClient() {
+  // Dados do Supabase são sempre por usuário e por requisição: nunca entram em
+  // prerender/prefetch (o supabase-js usa Date.now() para checar o JWT).
+  await connection();
   const cookieStore = await cookies();
 
   return createServerClient<Database>(
     publicEnv.NEXT_PUBLIC_SUPABASE_URL,
     publicEnv.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     {
+      global: { fetch: fetchWithClockSkewRetry },
       cookies: {
         getAll() {
           return cookieStore.getAll();
