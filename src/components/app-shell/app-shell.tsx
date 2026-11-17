@@ -1,0 +1,68 @@
+import Link from "next/link";
+import { Logo, LogoMark } from "@/components/brand/logo";
+import { getWorkspaceContext } from "@/lib/workspaces/context";
+import { MobileBottomNav, QuickAddButton, SidebarNav } from "./nav";
+import { UserMenu } from "./user-menu";
+import { WorkspaceSwitcher } from "./workspace-switcher";
+
+export async function AppShell({ children }: { children: React.ReactNode }) {
+  const { user, workspaces, active } = await getWorkspaceContext();
+
+  return (
+    <div className="relative min-h-dvh lg:grid lg:grid-cols-[17rem_1fr]">
+      {/* Brilho de fundo sutil */}
+      <div aria-hidden className="pointer-events-none fixed inset-x-0 top-0 -z-10 h-80 bg-[radial-gradient(60%_100%_at_50%_0%,var(--glow-1),transparent)]" />
+
+      {/* Sidebar (desktop) */}
+      <aside className="sticky top-0 hidden h-dvh flex-col gap-6 border-r bg-sidebar/80 p-4 backdrop-blur lg:flex">
+        <Link href="/painel" className="px-2 pt-1">
+          <Logo />
+        </Link>
+        <WorkspaceSwitcher workspaces={workspaces} activeId={active.id} />
+        <SidebarNav />
+        <div className="mt-auto grid gap-3">
+          <div className="flex items-center justify-between rounded-xl border border-dashed p-3">
+            <span className="text-xs text-muted-foreground">Novo lançamento</span>
+            <QuickAddButton className="size-9 rounded-xl" />
+          </div>
+          <UserMenu name={user.fullName} email={user.email} showDetails />
+        </div>
+      </aside>
+
+      {/* Topo (celular) */}
+      <header className="glass sticky top-0 z-40 flex h-14 items-center justify-between gap-2 border-b px-3 lg:hidden">
+        <Link href="/painel" aria-label="Início">
+          <LogoMark className="size-7" />
+        </Link>
+        <WorkspaceSwitcher workspaces={workspaces} activeId={active.id} compact />
+        <UserMenu name={user.fullName} email={user.email} />
+      </header>
+
+      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-6 pb-28 sm:px-6 lg:px-10 lg:pt-10 lg:pb-12">
+        {children}
+      </main>
+
+      <MobileBottomNav />
+    </div>
+  );
+}
+
+export function AppShellSkeleton() {
+  return (
+    <div className="min-h-dvh lg:grid lg:grid-cols-[17rem_1fr]">
+      <aside className="hidden border-r bg-sidebar/80 p-4 lg:block">
+        <div className="h-8 w-32 animate-pulse rounded-lg bg-muted" />
+        <div className="mt-6 h-14 animate-pulse rounded-xl bg-muted" />
+      </aside>
+      <div className="h-14 border-b lg:hidden" />
+      <main className="mx-auto w-full max-w-6xl px-4 pt-6 sm:px-6 lg:px-10 lg:pt-10">
+        <div className="h-8 w-48 animate-pulse rounded-lg bg-muted" />
+        <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {Array.from({ length: 4 }, (_, i) => (
+            <div key={i} className="h-28 animate-pulse rounded-2xl bg-muted" />
+          ))}
+        </div>
+      </main>
+    </div>
+  );
+}
