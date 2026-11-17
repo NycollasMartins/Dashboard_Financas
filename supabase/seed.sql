@@ -5,6 +5,7 @@
 -- Usuários de teste (e-mail já confirmado), senha de ambos: Teste12345
 --   ana@teste.local    → dona da família "Casa Teste"
 --   bruno@teste.local  → sem família (use para testar convites)
+--   caio@teste.local   → membro da família "Casa Teste" (gráfico por membro)
 -- =============================================================================
 
 insert into auth.users (
@@ -17,38 +18,71 @@ insert into auth.users (
    '{"provider":"email","providers":["email"]}', '{"full_name":"Ana Teste"}', now(), now(), '', '', '', ''),
   ('00000000-0000-0000-0000-000000000000', 'b0000000-0000-4000-8000-000000000002', 'authenticated', 'authenticated',
    'bruno@teste.local', extensions.crypt('Teste12345', extensions.gen_salt('bf')), now(),
-   '{"provider":"email","providers":["email"]}', '{"full_name":"Bruno Teste"}', now(), now(), '', '', '', '');
+   '{"provider":"email","providers":["email"]}', '{"full_name":"Bruno Teste"}', now(), now(), '', '', '', ''),
+  ('00000000-0000-0000-0000-000000000000', 'c0000000-0000-4000-8000-000000000003', 'authenticated', 'authenticated',
+   'caio@teste.local', extensions.crypt('Teste12345', extensions.gen_salt('bf')), now(),
+   '{"provider":"email","providers":["email"]}', '{"full_name":"Caio Teste"}', now(), now(), '', '', '', '');
 
 insert into auth.identities (id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
 select gen_random_uuid(), u.id, u.id::text,
        jsonb_build_object('sub', u.id::text, 'email', u.email, 'email_verified', true),
        'email', now(), now(), now()
 from auth.users u
-where u.email in ('ana@teste.local', 'bruno@teste.local');
+where u.email in ('ana@teste.local', 'bruno@teste.local', 'caio@teste.local');
 
 -- Família da Ana (o trigger adiciona a dona como admin e cria as categorias).
 insert into public.workspaces (kind, name, owner_id)
 values ('household', 'Casa Teste', 'a0000000-0000-4000-8000-000000000001');
 
+-- Caio entra na família como membro comum (no app isso acontece pelo convite).
+insert into public.workspace_members (workspace_id, user_id, role)
+select id, 'c0000000-0000-4000-8000-000000000003', 'member' from public.workspaces where name = 'Casa Teste';
+update public.profiles set last_workspace_id = (select id from public.workspaces where name = 'Casa Teste')
+where id = 'c0000000-0000-4000-8000-000000000003';
+
 -- =============================================================================
--- DADOS DE DEMONSTRAÇÃO (Fase 2) — família "Casa Teste" da Ana.
--- Datas relativas a HOJE: o mês atual e o anterior sempre têm dados.
+-- DADOS DE DEMONSTRAÇÃO (Fases 2 e 3) — família "Casa Teste" (Ana + Caio).
+-- 12 meses de histórico com datas RELATIVAS a hoje, para os gráficos fazerem
+-- sentido em qualquer dia: salários, contas fixas, mercado, cartões, parcelas,
+-- freelas eventuais e um mês atípico (conserto do carro, 4 meses atrás).
+-- Valores variam com random() de semente fixa → o seed é reproduzível.
 -- Os lançamentos são feitos "como a Ana" (auth.uid() simulado) para que a
 -- autoria e as regras do banco funcionem exatamente como no app.
 -- =============================================================================
 select set_config('request.jwt.claims', '{"sub":"a0000000-0000-4000-8000-000000000001","role":"authenticated"}', false);
+select setseed(0.42);
 
 do $$
 declare
   ws uuid := (select id from public.workspaces where name = 'Casa Teste');
   ana uuid := 'a0000000-0000-4000-8000-000000000001';
-  m0 date := private.month_start(private.today_sp());     -- 1º dia do mês atual
-  m1 date := private.add_months(private.today_sp(), -1);  -- 1º dia do mês anterior
+  caio uuid := 'c0000000-0000-4000-8000-000000000003';
   today date := private.today_sp();
+  m0 date := private.month_start(private.today_sp());   -- 1º dia do mês atual
+  start date := private.add_months(private.today_sp(), -11); -- 1º dia, 11 meses atrás
   acc_nu uuid; acc_wallet uuid; acc_save uuid; card_nu uuid; card_inter uuid;
-  cat uuid;
+  c_mercado uuid; c_rest uuid; c_transp uuid; c_saude uuid; c_lazer uuid; c_compras uuid;
+  c_cuidados uuid; c_pets uuid; c_viagem uuid; c_presentes uuid; c_freela uuid; c_salario uuid;
+  r_luz uuid;
   d date;
+  m date;
+  n int;
+  k int;
+  boost numeric;
 begin
+  select id into c_mercado  from public.categories where workspace_id = ws and name = 'Mercado';
+  select id into c_rest     from public.categories where workspace_id = ws and name = 'Restaurantes e delivery';
+  select id into c_transp   from public.categories where workspace_id = ws and name = 'Transporte';
+  select id into c_saude    from public.categories where workspace_id = ws and name = 'Saúde';
+  select id into c_lazer    from public.categories where workspace_id = ws and name = 'Lazer';
+  select id into c_compras  from public.categories where workspace_id = ws and name = 'Compras';
+  select id into c_cuidados from public.categories where workspace_id = ws and name = 'Cuidados pessoais';
+  select id into c_pets     from public.categories where workspace_id = ws and name = 'Pets';
+  select id into c_viagem   from public.categories where workspace_id = ws and name = 'Viagem';
+  select id into c_presentes from public.categories where workspace_id = ws and name = 'Presentes e doações';
+  select id into c_freela   from public.categories where workspace_id = ws and name = 'Freelance';
+  select id into c_salario  from public.categories where workspace_id = ws and name = 'Salário';
+
   update public.profiles set last_workspace_id = ws where id = ana;
 
   insert into public.accounts (workspace_id, name, type, institution, initial_balance_cents, color)
@@ -66,53 +100,102 @@ begin
   -- Recorrências (o trigger gera do início até o fim do mês atual)
   insert into public.recurrences (workspace_id, kind, description, amount_cents, category_id, payment_method, account_id, member_user_id, day_of_month, starts_on, auto_confirm)
   values
-    (ws, 'income', 'Salário Ana', 650000, (select id from public.categories where workspace_id = ws and name = 'Salário'), 'transfer', acc_nu, ana, 5, m1, false),
-    (ws, 'expense', 'Aluguel', 220000, (select id from public.categories where workspace_id = ws and name = 'Moradia'), 'pix', acc_nu, null, 10, m1, false),
-    (ws, 'expense', 'Internet', 11990, (select id from public.categories where workspace_id = ws and name = 'Contas e serviços'), 'boleto', acc_nu, null, 15, m1, false),
-    (ws, 'expense', 'Luz', 18740, (select id from public.categories where workspace_id = ws and name = 'Contas e serviços'), 'pix', acc_nu, null, 20, m1, false),
-    (ws, 'expense', 'Academia', 12990, (select id from public.categories where workspace_id = ws and name = 'Saúde'), 'debit', acc_nu, ana, 5, m1, false);
-  insert into public.recurrences (workspace_id, kind, description, amount_cents, category_id, payment_method, card_id, day_of_month, starts_on, auto_confirm)
+    (ws, 'income', 'Salário Ana', 650000, c_salario, 'transfer', acc_nu, ana, 5, start, false),
+    (ws, 'income', 'Salário Caio', 480000, c_salario, 'transfer', acc_nu, caio, 7, start, false),
+    (ws, 'expense', 'Aluguel', 280000, (select id from public.categories where workspace_id = ws and name = 'Moradia'), 'pix', acc_nu, null, 10, start, false),
+    (ws, 'expense', 'Internet', 11990, (select id from public.categories where workspace_id = ws and name = 'Contas e serviços'), 'boleto', acc_nu, null, 15, start, false),
+    (ws, 'expense', 'Academia', 12990, c_saude, 'debit', acc_nu, ana, 5, start, false);
+  insert into public.recurrences (workspace_id, kind, description, amount_cents, category_id, payment_method, account_id, day_of_month, starts_on, auto_confirm)
+  values (ws, 'expense', 'Luz', 18740, (select id from public.categories where workspace_id = ws and name = 'Contas e serviços'), 'pix', acc_nu, 20, start, false)
+  returning id into r_luz;
+  insert into public.recurrences (workspace_id, kind, description, amount_cents, category_id, payment_method, card_id, member_user_id, day_of_month, starts_on, auto_confirm)
   values
-    (ws, 'expense', 'Netflix', 5590, (select id from public.categories where workspace_id = ws and name = 'Assinaturas'), 'credit', card_nu, 8, m1, true),
-    (ws, 'expense', 'Spotify', 2190, (select id from public.categories where workspace_id = ws and name = 'Assinaturas'), 'credit', card_inter, 12, m1, true);
+    (ws, 'expense', 'Netflix', 5590, (select id from public.categories where workspace_id = ws and name = 'Assinaturas'), 'credit', card_nu, null, 8, start, true),
+    (ws, 'expense', 'Spotify', 2190, (select id from public.categories where workspace_id = ws and name = 'Assinaturas'), 'credit', card_inter, caio, 12, start, true);
 
   -- O que já passou está pago/recebido; o resto do mês fica "previsto".
   update public.transactions set is_settled = true where workspace_id = ws and recurrence_id is not null and occurred_on <= today;
+  -- Conta de luz varia com a estação.
+  update public.transactions set amount_cents = 14000 + (random() * 9000)::int
+  where recurrence_id = r_luz and occurred_on <= today;
 
-  -- Receita eventual
-  insert into public.transactions (workspace_id, kind, amount_cents, description, occurred_on, category_id, payment_method, account_id, member_user_id)
-  values (ws, 'income', 120000, 'Freela – site da padaria', m1 + 17, (select id from public.categories where workspace_id = ws and name = 'Freelance'), 'pix', acc_nu, ana);
+  -- Gastos do dia a dia, de 11 meses atrás até hoje.
+  for d in select generate_series(start, today, interval '1 day')::date loop
+    n := d - start;
+    k := ((extract(year from d) - extract(year from start)) * 12 + extract(month from d) - extract(month from start))::int;
+    -- Mês atual com delivery acima da média (o painel mostra o insight).
+    boost := case when d >= m0 then 1.4 else 1 end;
 
-  -- Gastos variáveis do mês anterior e do atual (até hoje)
-  for d in select generate_series(m1, today, interval '3 days')::date loop
-    insert into public.transactions (workspace_id, kind, amount_cents, description, occurred_on, category_id, payment_method, account_id)
-    values (ws, 'expense', 18000 + (extract(day from d)::int * 731) % 22000, 'Mercado', d,
-            (select id from public.categories where workspace_id = ws and name = 'Mercado'), 'debit', acc_nu);
+    if n % 4 = 0 then
+      insert into public.transactions (workspace_id, kind, amount_cents, description, occurred_on, category_id, payment_method, account_id, member_user_id)
+      values (ws, 'expense', 12000 + (random() * 20000)::int, 'Mercado', d, c_mercado, 'debit', acc_nu, case when n % 8 = 0 then ana else caio end);
+    end if;
+    if n % 7 = 3 then
+      insert into public.transactions (workspace_id, kind, amount_cents, description, occurred_on, category_id, payment_method, account_id, member_user_id)
+      values (ws, 'expense', 1800 + (random() * 4000)::int, 'Padaria', d, c_mercado, 'cash', acc_wallet, ana);
+    end if;
+    if n % 5 = 1 then
+      perform public.create_card_purchase(ws, card_nu, 1500 + (random() * 3000)::int, 1, 'Uber', d, c_transp, caio);
+    end if;
+    if n % 6 = 2 then
+      perform public.create_card_purchase(ws, card_inter, ((3500 + random() * 6000) * boost)::int, 1, 'iFood', d, c_rest, ana);
+    end if;
+    if n % 15 = 9 then
+      insert into public.transactions (workspace_id, kind, amount_cents, description, occurred_on, category_id, payment_method, account_id, member_user_id)
+      values (ws, 'expense', 18000 + (random() * 8000)::int, 'Combustível', d, c_transp, 'debit', acc_nu, caio);
+    end if;
+    if n % 20 = 11 then
+      insert into public.transactions (workspace_id, kind, amount_cents, description, occurred_on, category_id, payment_method, account_id, member_user_id)
+      values (ws, 'expense', 3000 + (random() * 9000)::int, 'Farmácia', d, c_saude, 'pix', acc_nu, ana);
+    end if;
+    if n % 14 = 5 then
+      insert into public.transactions (workspace_id, kind, amount_cents, description, occurred_on, category_id, payment_method, account_id, member_user_id)
+      values (ws, 'expense', 8000 + (random() * 17000)::int, case when n % 28 = 5 then 'Cinema e jantar' else 'Bar com amigos' end,
+              d, c_lazer, 'pix', acc_nu, case when n % 28 = 5 then ana else caio end);
+    end if;
+
+    -- Uma vez por mês
+    if extract(day from d) = 2 then
+      insert into public.transfers (workspace_id, from_account_id, to_account_id, amount_cents, occurred_on, description)
+      values (ws, acc_nu, acc_wallet, 20000, d, 'Saque');
+    end if;
+    if extract(day from d) = 6 then
+      insert into public.transfers (workspace_id, from_account_id, to_account_id, amount_cents, occurred_on, description)
+      values (ws, acc_nu, acc_save, 150000, d, 'Reserva do mês');
+    end if;
+    if extract(day from d) = 12 then
+      insert into public.transactions (workspace_id, kind, amount_cents, description, occurred_on, category_id, payment_method, account_id, member_user_id)
+      values (ws, 'expense', 6000 + (random() * 3000)::int, 'Cabeleireiro', d, c_cuidados, 'pix', acc_nu, ana),
+             (ws, 'expense', 16000 + (random() * 4000)::int, 'Ração e petshop', d, c_pets, 'debit', acc_nu, caio);
+    end if;
+
+    -- Freelas eventuais (3, 7 e 1 mês atrás)
+    if extract(day from d) = 18 and k in (4, 8, 10) then
+      insert into public.transactions (workspace_id, kind, amount_cents, description, occurred_on, category_id, payment_method, account_id, member_user_id)
+      values (ws, 'income', 120000 + (random() * 130000)::int,
+              case k when 4 then 'Freela – app da clínica' when 8 then 'Freela – logo do café' else 'Freela – site da padaria' end,
+              d, c_freela, 'pix', acc_nu, case when k = 8 then caio else ana end);
+    end if;
+    -- 13º salário em dezembro
+    if extract(month from d) = 12 and extract(day from d) = 20 then
+      insert into public.transactions (workspace_id, kind, amount_cents, description, occurred_on, category_id, payment_method, account_id, member_user_id)
+      values (ws, 'income', 325000, '13º salário Ana', d, c_salario, 'transfer', acc_nu, ana);
+    end if;
+    -- Mês atípico (4 meses atrás): carro quebrou + presente de casamento
+    if k = 7 and extract(day from d) = 14 then
+      insert into public.transactions (workspace_id, kind, amount_cents, description, occurred_on, category_id, payment_method, account_id, member_user_id, notes)
+      values (ws, 'expense', 385000, 'Conserto do carro', d, c_transp, 'pix', acc_nu, caio, 'Embreagem + revisão'),
+             (ws, 'expense', 60000, 'Presente de casamento', d + 3, c_presentes, 'pix', acc_nu, ana, null);
+    end if;
   end loop;
-  for d in select generate_series(m1 + 1, today, interval '5 days')::date loop
-    perform public.create_card_purchase(ws, card_nu, 2190 + (extract(day from d)::int * 377) % 3500, 1, 'Uber', d,
-            (select id from public.categories where workspace_id = ws and name = 'Transporte'));
-    perform public.create_card_purchase(ws, card_inter, 4590 + (extract(day from d)::int * 911) % 6000, 1, 'iFood', d + 1,
-            (select id from public.categories where workspace_id = ws and name = 'Restaurantes e delivery'));
-  end loop;
-  insert into public.transactions (workspace_id, kind, amount_cents, description, occurred_on, category_id, payment_method, account_id)
-  values
-    (ws, 'expense', 3500, 'Padaria', today, (select id from public.categories where workspace_id = ws and name = 'Mercado'), 'cash', acc_wallet),
-    (ws, 'expense', 8990, 'Farmácia', greatest(m0, today - 2), (select id from public.categories where workspace_id = ws and name = 'Saúde'), 'pix', acc_nu),
-    (ws, 'expense', 15000, 'Cinema e jantar', m1 + 20, (select id from public.categories where workspace_id = ws and name = 'Lazer'), 'pix', acc_nu);
 
-  -- Compra parcelada: notebook em 10x no Nubank (começou no mês anterior)
-  perform public.create_card_purchase(ws, card_nu, 499990, 10, 'Notebook', m1 + 13,
-          (select id from public.categories where workspace_id = ws and name = 'Compras'));
-  -- Celular em 6x no Inter
-  perform public.create_card_purchase(ws, card_inter, 179900, 6, 'Celular novo', m1 + 2,
-          (select id from public.categories where workspace_id = ws and name = 'Compras'));
+  -- Compras parceladas
+  perform public.create_card_purchase(ws, card_inter, 179900, 6, 'Celular novo', private.add_months(start, 1) + 9, c_compras, caio);
+  perform public.create_card_purchase(ws, card_nu, 240000, 3, 'Passagens – férias', private.add_months(start, 4) + 4, c_viagem, ana);
+  -- Notebook em 10x começou há 3 meses: parcelas futuras atravessam a virada do ano.
+  perform public.create_card_purchase(ws, card_nu, 499990, 10, 'Notebook', private.add_months(start, 8) + 13, c_compras, ana);
 
-  -- Transferência para a poupança
-  insert into public.transfers (workspace_id, from_account_id, to_account_id, amount_cents, occurred_on, description)
-  values (ws, acc_nu, acc_save, 50000, m1 + 6, 'Reserva do mês');
-
-  -- Paga as faturas já vencidas (total exato)
+  -- Paga as faturas já vencidas (total exato, no vencimento)
   insert into public.invoice_payments (workspace_id, invoice_id, account_id, amount_cents, paid_on)
   select ws, s.invoice_id, acc_nu, s.total_cents, s.due_date
   from public.card_invoice_summaries s
