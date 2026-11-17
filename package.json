@@ -15,13 +15,15 @@
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
     "db:types": "supabase gen types typescript --local > src/lib/supabase/database.types.ts",
-    "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm test:db",
+    "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm test:db && pnpm test:integration",
     "dev:lan": "node scripts/dev-lan.mjs",
     "icons": "node scripts/generate-icons.mjs",
     "test:e2e": "playwright test --project=setup --project=\"Desktop Chrome\" --project=\"Mobile Safari (iPhone 15)\" --project=\"Mobile Safari (iPhone SE)\" --project=\"Mobile Chrome (Android 360x800)\"",
     "test:e2e:ios": "playwright test --project=setup --project=\"Mobile Safari (iPhone 15)\" --project=\"Mobile Safari (iPhone SE)\"",
     "test:e2e:ui": "playwright test --ui",
-    "screenshots": "playwright test --project=screenshots"
+    "screenshots": "playwright test --project=screenshots",
+    "test:integration": "vitest run --config vitest.integration.config.mts",
+    "eval:assistant": "vitest run --config vitest.eval.config.mts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
