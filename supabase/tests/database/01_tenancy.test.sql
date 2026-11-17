@@ -4,7 +4,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path to public, extensions;
 
-select plan(31);
+select plan(34);
 
 -- -----------------------------------------------------------------------------
 -- Fixtures: três usuários (Alice = dona da família, Bob = cônjuge, Carol = estranha)
@@ -138,6 +138,18 @@ delete from workspace_members
  where workspace_id = current_setting('test.hh')::uuid and user_id = '22222222-2222-2222-2222-222222222222';
 select is((select count(*)::int from workspaces where id = current_setting('test.hh')::uuid), 0,
   'depois de sair, Bob não vê mais a família');
+
+-- Dona exclui a família: cascata remove membros sem esbarrar no trigger do dono.
+set local request.jwt.claims to '{"sub":"22222222-2222-2222-2222-222222222222","email":"bob@test.dev","role":"authenticated"}';
+delete from workspaces where id = current_setting('test.hh')::uuid;
+set local request.jwt.claims to '{"sub":"11111111-1111-1111-1111-111111111111","email":"alice@test.dev","role":"authenticated"}';
+select is((select count(*)::int from workspaces where id = current_setting('test.hh')::uuid), 1,
+  'ex-membro não exclui a família');
+select lives_ok($$ delete from workspaces where id = current_setting('test.hh')::uuid $$,
+  'dona exclui a família');
+reset role;
+select is((select count(*)::int from workspace_members where workspace_id = current_setting('test.hh')::uuid), 0,
+  'membros e dados da família somem em cascata');
 
 -- anon não enxerga nada
 reset role;
