@@ -147,5 +147,7 @@ export const transactionFiltersSchema = z.object({
   conta: z.uuid().optional().catch(undefined),
   cartao: z.uuid().optional().catch(undefined),
   q: z.string().trim().max(80).optional().catch(undefined),
+  /** "caixa": compras no cartão pela data de vencimento da fatura (igual ao painel). */
+  visao: z.enum(["competencia", "caixa"]).optional().catch(undefined),
 });
 export type TransactionFilters = z.infer<typeof transactionFiltersSchema>;

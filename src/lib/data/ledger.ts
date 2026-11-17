@@ -1,5 +1,6 @@
 import "server-only";
 import { cache } from "react";
+import { addDays } from "@/lib/analytics/period";
 import { addMonths, todayISO, type ISODate } from "@/lib/dates";
 import { createClient } from "@/lib/supabase/server";
 import type { TransactionFilters } from "@/lib/validation/ledger";
@@ -145,7 +146,8 @@ export const getLedgerLookups = cache(async (workspaceId: string, userId: string
 });
 
 export type LedgerRow = {
-  type: "transaction" | "transfer";
+  /** projection = ocorrência futura calculada pela regra da recorrência (não existe no banco). */
+  type: "transaction" | "transfer" | "projection";
   id: string;
   kind: "income" | "expense" | "transfer";
   amountCents: number;
@@ -165,6 +167,11 @@ export type LedgerRow = {
   isSettled: boolean;
   recurrenceId: string | null;
   notes: string | null;
+  /** Data usada para agrupar/ordenar: a do lançamento ou, na visão caixa, o vencimento da fatura. */
+  bucketDate: string;
+  dateBasis: "occurred" | "due";
+  /** Na visão caixa: compra no cartão ainda prevista (fatura não quitada). */
+  isPlanned: boolean;
 };
 
 export function monthRange(month?: string) {
@@ -180,6 +187,70 @@ export async function listLedger(workspaceId: string, filters: TransactionFilter
   const wantsTx = filters.tipo !== "transfer";
   const onlyTxFilters = filters.categoria || filters.cartao || filters.membro;
 
+  // Visão caixa: o conjunto de lançamentos e a data de cada um vêm da MESMA
+  // função do painel (analytics_entries) → a lista soma exatamente o gráfico.
+  const cash = filters.visao === "caixa";
+  const bucket = new Map<string, string>();
+  const planned = new Map<string, boolean>();
+  const invoiceIds = new Set<string>();
+  // Meses depois do atual: o painel soma ocorrências PROJETADAS das recorrências
+  // (motor de projeção); a lista mostra as mesmas, somente leitura.
+  const future = start > `${todayISO().slice(0, 7)}-01`;
+  const projected: LedgerRow[] = [];
+  if (cash || future) {
+    const { data, error } = await supabase.rpc("analytics_entries", {
+      p_workspace_id: workspaceId,
+      p_from: start,
+      p_to: addDays(end, -1),
+      p_basis: cash ? "cash" : "accrual",
+      p_category_id: filters.categoria,
+      p_member_id: filters.membro,
+      p_account_id: filters.conta,
+      p_card_id: filters.cartao,
+      p_include_projected: future,
+    });
+    if (error) throw error;
+    const virtual = data.filter((e) => e.is_projected && (!filters.tipo || filters.tipo === e.kind) &&
+      (!filters.q || e.description.toLowerCase().includes(filters.q.toLowerCase())));
+    if (virtual.length) {
+      const cats = await supabase.from("categories").select("id, name, icon, color").eq("workspace_id", workspaceId);
+      const byId = new Map((cats.data ?? []).map((c) => [c.id, c]));
+      virtual.forEach((e, i) =>
+        projected.push({
+          type: "projection",
+          id: `proj-${e.bucket_date}-${i}`,
+          kind: e.kind,
+          amountCents: e.amount_cents,
+          description: e.description,
+          occurredOn: e.occurred_on,
+          createdAt: "",
+          category: e.category_id ? (byId.get(e.category_id) ?? null) : null,
+          paymentMethod: e.payment_method,
+          accountId: e.account_id,
+          toAccountId: null,
+          cardId: e.card_id,
+          invoiceMonth: null,
+          installmentNumber: null,
+          installmentTotal: null,
+          memberUserId: e.member_id,
+          createdBy: null,
+          isSettled: false,
+          recurrenceId: null,
+          notes: null,
+          bucketDate: e.bucket_date,
+          dateBasis: cash && e.card_id ? "due" : "occurred",
+          isPlanned: true,
+        }),
+      );
+    }
+    for (const e of data) {
+      if (!e.transaction_id || !cash) continue;
+      bucket.set(e.transaction_id, e.bucket_date);
+      planned.set(e.transaction_id, e.is_planned);
+      if (e.invoice_id && e.payment_method === "credit") invoiceIds.add(e.invoice_id);
+    }
+  }
+
   const childIds = filters.categoria
     ? ((await supabase.from("categories").select("id").eq("workspace_id", workspaceId).eq("parent_id", filters.categoria)).data ?? []).map((c) => c.id)
     : [];
@@ -191,11 +262,21 @@ export async function listLedger(workspaceId: string, filters: TransactionFilter
         "id, kind, amount_cents, description, occurred_on, created_at, payment_method, account_id, card_id, installment_number, installment_total, member_user_id, created_by, is_settled, recurrence_id, notes, category:categories(id, name, icon, color), invoice:card_invoices(reference_month)",
       )
       .eq("workspace_id", workspaceId)
-      .gte("occurred_on", start)
-      .lt("occurred_on", end)
       .order("occurred_on", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(1000);
+    if (cash) {
+      // Candidatos: fora do cartão no mês OU itens das faturas que vencem no mês.
+      // Depois mantemos só os que a função do painel devolveu (bucket).
+      const parts = [`and(occurred_on.gte.${start},occurred_on.lt.${end},payment_method.neq.credit)`];
+      if (invoiceIds.size) parts.push(`invoice_id.in.(${[...invoiceIds].join(",")})`);
+      q = q.or(parts.join(","));
+      if (filters.tipo === "income" || filters.tipo === "expense") q = q.eq("kind", filters.tipo);
+      if (filters.q) q = q.ilike("description", `%${filters.q.replace(/[%_]/g, "")}%`);
+      return q; // categoria/membro/conta/cartão já aplicados pela função do painel
+    } else {
+      q = q.gte("occurred_on", start).lt("occurred_on", end);
+    }
     if (filters.tipo === "income" || filters.tipo === "expense") q = q.eq("kind", filters.tipo);
     // Categoria-pai inclui as subcategorias (o painel leva para cá).
     if (filters.categoria) q = q.in("category_id", [filters.categoria, ...childIds]);
@@ -222,12 +303,15 @@ export async function listLedger(workspaceId: string, filters: TransactionFilter
 
   const [tx, tr] = await Promise.all([
     wantsTx ? txQuery() : Promise.resolve({ data: [], error: null }),
-    wantsTransfers && !onlyTxFilters ? trQuery() : Promise.resolve({ data: [], error: null }),
+    // Transferências não entram nas somas do painel; na visão caixa ficam de fora.
+    wantsTransfers && !onlyTxFilters && !cash ? trQuery() : Promise.resolve({ data: [], error: null }),
   ]);
   if (tx.error) throw tx.error;
   if (tr.error) throw tr.error;
+  if (cash && tx.data) tx.data = tx.data.filter((t) => bucket.has(t.id));
 
   const rows: LedgerRow[] = [
+    ...projected,
     ...(tx.data ?? []).map((t) => ({
       type: "transaction" as const,
       id: t.id,
@@ -249,6 +333,9 @@ export async function listLedger(workspaceId: string, filters: TransactionFilter
       isSettled: t.is_settled,
       recurrenceId: t.recurrence_id,
       notes: t.notes,
+      bucketDate: bucket.get(t.id) ?? t.occurred_on,
+      dateBasis: (cash && t.card_id ? "due" : "occurred") as "due" | "occurred",
+      isPlanned: cash ? (planned.get(t.id) ?? false) : !t.is_settled || t.occurred_on > todayISO(),
     })),
     ...(tr.data ?? []).map((t) => ({
       type: "transfer" as const,
@@ -271,10 +358,13 @@ export async function listLedger(workspaceId: string, filters: TransactionFilter
       isSettled: true,
       recurrenceId: null,
       notes: null,
+      bucketDate: t.occurred_on,
+      dateBasis: "occurred" as const,
+      isPlanned: false,
     })),
   ];
   return rows.sort((a, b) =>
-    a.occurredOn === b.occurredOn ? b.createdAt.localeCompare(a.createdAt) : b.occurredOn.localeCompare(a.occurredOn),
+    a.bucketDate === b.bucketDate ? b.createdAt.localeCompare(a.createdAt) : b.bucketDate.localeCompare(a.bucketDate),
   );
 }
 

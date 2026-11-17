@@ -110,6 +110,7 @@ export function LedgerFilters({ lookups }: { lookups: LedgerLookups }) {
               onClick={() => {
                 const next = new URLSearchParams();
                 if (params.get("mes")) next.set("mes", params.get("mes")!);
+                if (params.get("visao")) next.set("visao", params.get("visao")!);
                 start(() => router.replace(`${pathname}?${next.toString()}`, { scroll: false }));
               }}
             >

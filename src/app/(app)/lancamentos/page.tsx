@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 import { ListOrdered } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
@@ -38,6 +39,11 @@ async function LedgerContent({ searchParams }: { searchParams: PageProps<"/lanca
 
   const income = rows.filter((r) => r.kind === "income").reduce((a, r) => a + r.amountCents, 0);
   const expense = rows.filter((r) => r.kind === "expense").reduce((a, r) => a + r.amountCents, 0);
+  const plannedExpense = rows.filter((r) => r.kind === "expense" && r.isPlanned).reduce((a, r) => a + r.amountCents, 0);
+  const cash = filters.visao === "caixa";
+  const toggle = new URLSearchParams(
+    Object.entries({ ...filters, visao: cash ? undefined : "caixa" }).filter(([, v]) => v) as [string, string][],
+  ).toString();
   const hasFilters = Boolean(filters.tipo || filters.categoria || filters.membro || filters.conta || filters.cartao || filters.q);
 
   return (
@@ -61,6 +67,18 @@ async function LedgerContent({ searchParams }: { searchParams: PageProps<"/lanca
           </div>
         </dl>
       </div>
+      {cash && (
+        <div role="note" className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-info/30 bg-info/10 px-4 py-3 text-sm">
+          <p className="min-w-0">
+            <strong className="font-semibold">Visão caixa:</strong> compras no cartão aparecem na data de{" "}
+            <strong className="font-semibold">vencimento da fatura</strong> (selo azul). Total de despesas igual ao do painel
+            {plannedExpense > 0 && <>, incluindo <Money cents={plannedExpense} /> de faturas ainda em aberto</>}.
+          </p>
+          <Link href={`/lancamentos?${toggle}`} className="shrink-0 font-medium text-info underline-offset-4 hover:underline">
+            Ver por data da compra
+          </Link>
+        </div>
+      )}
       <LedgerFilters lookups={lookups} />
       {rows.length === 0 ? (
         <EmptyState

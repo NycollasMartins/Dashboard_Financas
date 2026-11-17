@@ -74,6 +74,8 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/painel">[
     if (filters.conta) q.set("conta", filters.conta);
     if (filters.cartao) q.set("cartao", filters.cartao);
     if (filters.categoria) q.set("categoria", filters.categoria);
+    // Na visão caixa a lista usa a mesma regra (vencimento da fatura) → soma igual ao gráfico.
+    if (basis === "cash") q.set("visao", "caixa");
     for (const [k, v] of Object.entries(extra)) q.set(k, v);
     return `/lancamentos?${q.toString()}`;
   };

@@ -19,6 +19,8 @@ function dayLabel(iso: string, today: string) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+const shortDate = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+
 export function LedgerList({ rows, lookups, today }: { rows: LedgerRow[]; lookups: LedgerLookups; today: string }) {
   const { open } = useEntrySheet();
   const accounts = new Map(lookups.accounts.map((a) => [a.id, a.name]));
@@ -26,7 +28,8 @@ export function LedgerList({ rows, lookups, today }: { rows: LedgerRow[]; lookup
   const members = new Map(lookups.members.map((m) => [m.id, m.name.split(" ")[0]]));
 
   const groups = new Map<string, LedgerRow[]>();
-  for (const r of rows) groups.set(r.occurredOn, [...(groups.get(r.occurredOn) ?? []), r]);
+  // Agrupa pela data USADA (na visão caixa, compras no cartão ficam no vencimento da fatura).
+  for (const r of rows) groups.set(r.bucketDate, [...(groups.get(r.bucketDate) ?? []), r]);
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-5">
@@ -52,13 +55,16 @@ export function LedgerList({ rows, lookups, today }: { rows: LedgerRow[]; lookup
                   lookups.members.length > 1 ? who : null,
                 ].filter(Boolean);
                 return (
-                  <li key={`${r.type}-${r.id}`} className="flex items-center gap-1">
+                  <li key={`${r.type}-${r.id}`} className={cn("flex items-center gap-1", r.type === "projection" && "bg-[repeating-linear-gradient(135deg,transparent_0_8px,color-mix(in_oklch,var(--muted-foreground)_6%,transparent)_8px_9px)]")}>
                     <button
                       type="button"
+                      disabled={r.type === "projection"}
+                      title={r.type === "projection" ? "Projeção da recorrência — vira lançamento quando o mês chegar" : undefined}
                       onClick={() =>
+                        r.type !== "projection" &&
                         open({
                           id: r.id,
-                          type: r.type,
+                          type: r.type as "transaction" | "transfer",
                           kind: r.kind,
                           amountCents: r.amountCents,
                           description: r.description,
@@ -91,6 +97,13 @@ export function LedgerList({ rows, lookups, today }: { rows: LedgerRow[]; lookup
                           {r.cardId && <CreditCard className="size-3.5 shrink-0 text-muted-foreground" aria-label="Cartão" />}
                         </span>
                         <span className="block truncate text-xs text-muted-foreground">{meta.join(" · ")}</span>
+                        {r.dateBasis === "due" && (
+                          <span className="mt-1 inline-flex items-center gap-1 rounded-md bg-info/12 px-1.5 py-0.5 text-[11px] font-medium text-info">
+                            <CalendarClock aria-hidden className="size-3" />
+                            Vence {shortDate(r.bucketDate)} · compra {shortDate(r.occurredOn)}
+                            {r.isPlanned && " · fatura em aberto"}
+                          </span>
+                        )}
                       </span>
                       <span className="grid justify-items-end gap-0.5">
                         <span
@@ -110,12 +123,12 @@ export function LedgerList({ rows, lookups, today }: { rows: LedgerRow[]; lookup
                         </span>
                         {!r.isSettled && (
                           <span className="flex items-center gap-1 text-[10px] font-semibold tracking-wide text-warning uppercase">
-                            <CalendarClock className="size-3" /> Previsto
+                            <CalendarClock className="size-3" /> {r.type === "projection" ? "Projeção" : "Previsto"}
                           </span>
                         )}
                       </span>
                     </button>
-                    {!r.isSettled && <ConfirmButton id={r.id} />}
+                    {!r.isSettled && r.type === "transaction" && <ConfirmButton id={r.id} />}
                   </li>
                 );
               })}
