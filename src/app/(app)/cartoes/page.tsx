@@ -47,7 +47,7 @@ async function CardsContent() {
       <div className="flex justify-end">
         <CardFormButton workspaceId={active.id} />
       </div>
-      <ul className="grid gap-4 md:grid-cols-2">
+      <ul className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-2">
         {lookups.cards.map((c) => {
           const cardInvoices = invoices.filter((i) => i.cardId === c.id);
           // Fatura "atual" = a primeira ainda não paga cujo vencimento não passou há mais de 1 mês.

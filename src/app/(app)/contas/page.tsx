@@ -49,7 +49,7 @@ async function AccountsContent() {
           <AccountFormButton workspaceId={active.id} />
         </div>
       </section>
-      <ul className="grid gap-3 sm:grid-cols-2">
+      <ul className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2">
         {accounts.map((a) => (
           <li key={a.id} className="flex items-center gap-3 rounded-2xl border bg-card p-4 animate-rise">
             <span className="grid size-11 shrink-0 place-items-center rounded-xl" style={{ backgroundColor: `color-mix(in oklch, ${a.color ?? "#5eead4"} 18%, transparent)`, color: a.color ?? undefined }}>
@@ -60,11 +60,11 @@ async function AccountsContent() {
               <p className="text-xs text-muted-foreground">{ACCOUNT_TYPE_LABELS[a.type as keyof typeof ACCOUNT_TYPE_LABELS]}</p>
               {a.pendingCents !== 0 && (
                 <p className="text-xs text-warning">
-                  Previsto: <Money cents={a.pendingCents} signed />
+                  Previsto: <Money cents={a.pendingCents} signed className="whitespace-nowrap" />
                 </p>
               )}
             </div>
-            <Money cents={a.balanceCents} className="font-semibold" tone={a.balanceCents < 0 ? "expense" : "neutral"} />
+            <Money cents={a.balanceCents} className="shrink-0 font-semibold whitespace-nowrap" tone={a.balanceCents < 0 ? "expense" : "neutral"} />
             <AccountFormButton workspaceId={active.id} account={a} />
           </li>
         ))}
