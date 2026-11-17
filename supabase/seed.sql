@@ -41,7 +41,7 @@ update public.profiles set last_workspace_id = (select id from public.workspaces
 where id = 'c0000000-0000-4000-8000-000000000003';
 
 -- =============================================================================
--- DADOS DE DEMONSTRAÇÃO (Fases 2 e 3) — família "Casa Teste" (Ana + Caio).
+-- DADOS DE DEMONSTRAÇÃO (Fases 2, 3 e 4) — família "Casa Teste" (Ana + Caio).
 -- 12 meses de histórico com datas RELATIVAS a hoje, para os gráficos fazerem
 -- sentido em qualquer dia: salários, contas fixas, mercado, cartões, parcelas,
 -- freelas eventuais e um mês atípico (conserto do carro, 4 meses atrás).
@@ -64,6 +64,8 @@ declare
   c_mercado uuid; c_rest uuid; c_transp uuid; c_saude uuid; c_lazer uuid; c_compras uuid;
   c_cuidados uuid; c_pets uuid; c_viagem uuid; c_presentes uuid; c_freela uuid; c_salario uuid;
   r_luz uuid;
+  g_carro uuid; g_viagem uuid; g_reserva uuid;
+  carro_aportes int[] := array[150000, 0, 250000, 80000, 300000, 120000, 200000];
   d date;
   m date;
   n int;
@@ -159,10 +161,6 @@ begin
       insert into public.transfers (workspace_id, from_account_id, to_account_id, amount_cents, occurred_on, description)
       values (ws, acc_nu, acc_wallet, 20000, d, 'Saque');
     end if;
-    if extract(day from d) = 6 then
-      insert into public.transfers (workspace_id, from_account_id, to_account_id, amount_cents, occurred_on, description)
-      values (ws, acc_nu, acc_save, 150000, d, 'Reserva do mês');
-    end if;
     if extract(day from d) = 12 then
       insert into public.transactions (workspace_id, kind, amount_cents, description, occurred_on, category_id, payment_method, account_id, member_user_id)
       values (ws, 'expense', 6000 + (random() * 3000)::int, 'Cabeleireiro', d, c_cuidados, 'pix', acc_nu, ana),
@@ -194,6 +192,43 @@ begin
   perform public.create_card_purchase(ws, card_nu, 240000, 3, 'Passagens – férias', private.add_months(start, 4) + 4, c_viagem, ana);
   -- Notebook em 10x começou há 3 meses: parcelas futuras atravessam a virada do ano.
   perform public.create_card_purchase(ws, card_nu, 499990, 10, 'Notebook', private.add_months(start, 8) + 13, c_compras, ana);
+
+  -- ---------------------------------------------------------------------------
+  -- Metas (Fase 4)
+  --   Carro: R$ 60.000 em 24 meses, aportes irregulares nos últimos 7 meses → Poupança.
+  --   Viagem: R$ 8.000 em 8 meses, aporte planejado de R$ 500 todo dia 5 (caixinha, sem conta).
+  --   Reserva de emergência: sem prazo, R$ 8.500 já guardados, uma retirada no mês atípico.
+  -- ---------------------------------------------------------------------------
+  insert into public.goals (workspace_id, name, icon, color, target_cents, target_date, priority, reserve_account_id, created_at)
+  values (ws, 'Carro', 'car', '#38bdf8', 6000000, private.add_months(m0, 25) - 1, 1, acc_save, private.add_months(m0, -7))
+  returning id into g_carro;
+  insert into public.goals (workspace_id, name, icon, color, target_cents, target_date, priority, created_at)
+  values (ws, 'Viagem', 'plane', '#f472b6', 800000, private.add_months(m0, 9) - 1, 2, private.add_months(m0, -4))
+  returning id into g_viagem;
+  insert into public.goals (workspace_id, name, icon, color, target_cents, priority, initial_cents, reserve_account_id, annual_return_bps, created_at)
+  values (ws, 'Reserva de emergência', 'shield', '#4ade80', 3000000, 1, 850000, acc_save, 1000, start)
+  returning id into g_reserva;
+
+  -- Carro: um aporte por mês (às vezes nenhum), alternando quem guardou.
+  for k in 1 .. 7 loop
+    if carro_aportes[k] > 0 then
+      insert into public.goal_contributions (workspace_id, goal_id, amount_cents, contributed_on, account_id, member_user_id)
+      values (ws, g_carro, carro_aportes[k], private.add_months(m0, k - 8) + 7, acc_nu, case when k % 2 = 0 then caio else ana end);
+    end if;
+  end loop;
+
+  -- Viagem: aporte planejado mensal (recorrência com goal_id); os que já passaram foram confirmados.
+  insert into public.recurrences (workspace_id, kind, description, amount_cents, payment_method, account_id, member_user_id,
+                                  day_of_month, starts_on, auto_confirm, goal_id)
+  values (ws, 'expense', 'Guardar para a viagem', 50000, 'transfer', acc_nu, ana, 5, private.add_months(m0, -3), false, g_viagem);
+  update public.goal_contributions set is_planned = false where goal_id = g_viagem and contributed_on <= today;
+
+  -- Reserva: aportes eventuais e uma retirada (com motivo) no mês do conserto do carro.
+  insert into public.goal_contributions (workspace_id, goal_id, amount_cents, contributed_on, account_id, member_user_id, note)
+  values
+    (ws, g_reserva, 100000, private.add_months(start, 2) + 9, acc_nu, ana, null),
+    (ws, g_reserva, 150000, private.add_months(start, 5) + 9, acc_nu, caio, null),
+    (ws, g_reserva, -80000, private.add_months(start, 7) + 15, acc_nu, caio, 'Parte do conserto do carro');
 
   -- Paga as faturas já vencidas (total exato, no vencimento)
   insert into public.invoice_payments (workspace_id, invoice_id, account_id, amount_cents, paid_on)
