@@ -93,15 +93,20 @@ export function AssistantChat({ initial, aiConfigured }: { initial: ChatMessage[
           className="flex items-end gap-2"
           onSubmit={(e) => {
             e.preventDefault();
-            const t = text.trim();
-            if (!t || pending) return;
+            // Lê o campo direto (funciona mesmo se o texto foi digitado antes da hidratação)
+            // e não bloqueia enquanto a página se atualiza: o Next executa as ações em fila.
+            const field = e.currentTarget.elements.namedItem("message") as HTMLInputElement;
+            const t = field.value.trim();
+            if (!t) return;
             setText("");
+            field.value = "";
             send({ kind: "text", text: t });
           }}
         >
           <label className="sr-only" htmlFor="assistant-input">Mensagem para o assistente</label>
           <input
             id="assistant-input"
+            name="message"
             value={text}
             onChange={(e) => setText(e.target.value)}
             maxLength={1000}
@@ -110,7 +115,7 @@ export function AssistantChat({ initial, aiConfigured }: { initial: ChatMessage[
             placeholder="Ex.: gastei 45,90 no ifood ontem"
             className="h-12 min-w-0 flex-1 rounded-2xl border border-input bg-card px-4 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           />
-          <Button type="submit" size="icon-lg" className="size-12 rounded-2xl" disabled={pending || !text.trim()} aria-label="Enviar">
+          <Button type="submit" size="icon-lg" className="size-12 rounded-2xl" aria-label="Enviar">
             {pending ? <Loader2 className="animate-spin" /> : <SendHorizontal />}
           </Button>
         </form>
@@ -148,14 +153,14 @@ function PrivacyNote({ aiConfigured, onClear }: { aiConfigured: boolean; onClear
 function Bubble({ message, interactive, send }: { message: ChatMessage; interactive: boolean; send: Send }) {
   if (message.role === "user") {
     return (
-      <div className="flex justify-end">
+      <div className="flex justify-end" data-role="user">
         <p className="max-w-[85%] rounded-2xl rounded-br-md bg-primary px-4 py-2.5 text-sm whitespace-pre-wrap text-primary-foreground">{message.body}</p>
       </div>
     );
   }
   const r = message.reply;
   return (
-    <div className="grid max-w-[92%] gap-2 justify-self-start">
+    <div className="grid max-w-[92%] gap-2 justify-self-start" data-role="assistant">
       <p
         className={cn(
           "rounded-2xl rounded-bl-md border bg-card px-4 py-2.5 text-sm whitespace-pre-wrap",
