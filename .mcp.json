@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "playwright-iphone": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@0.0.85", "--browser=webkit", "--device=iPhone 15", "--isolated"]
+    },
+    "playwright-iphone-se": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@0.0.85", "--browser=webkit", "--device=iPhone SE (3rd gen)", "--isolated"]
+    }
+  }
+}
