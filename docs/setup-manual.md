@@ -62,7 +62,8 @@ pnpm dev               # http://localhost:3000
    supabase link --project-ref SEU_PROJECT_REF   # o "ref" está na URL do painel
    supabase db push
    ```
-3. **Authentication → Sign In / Providers → Email**: deixe "Confirm email" **ligado**.
+3. **Authentication → Sign In / Providers → Email**: deixe "Confirm email" **ligado** e
+   **"Secure email change"** ligado (a troca de e-mail exige confirmação nos dois endereços).
    Em **Password**: mínimo 8 caracteres, exigir letras e dígitos.
 4. **Authentication → URL Configuration**:
    - Site URL: a URL da Vercel (ex.: `https://seu-app.vercel.app`)
@@ -78,7 +79,9 @@ pnpm dev               # http://localhost:3000
       host `smtp-relay.brevo.com`, porta `587`, usuário e senha da Brevo, remetente = e-mail verificado.
 7. **Project Settings → API Keys**: copie a **URL do projeto** e a **Publishable key** (`sb_publishable_…`).
    ⚠️ **Nunca** copie a *Secret key* para variáveis com prefixo `NEXT_PUBLIC_`.
-8. ⚠️ O plano Free **pausa o projeto após 7 dias sem uso**. Se pausar, entre no painel e clique em *Restore*.
+8. **Recorrências automáticas**: a migration 0006 habilita a extensão **pg_cron** e agenda o job
+   `gerar-recorrencias` (03:00 de São Paulo). Confira em *Integrations → Cron* que ele aparece.
+9. ⚠️ O plano Free **pausa o projeto após 7 dias sem uso**. Se pausar, entre no painel e clique em *Restore*.
 
 ---
 
@@ -106,3 +109,14 @@ pnpm dev               # http://localhost:3000
 | 6 · WhatsApp | Conta de desenvolvedor Meta, app do tipo *Business*, produto **WhatsApp**, número de teste, token permanente (System User), *App Secret*, e configurar o webhook com a URL da Vercel |
 | 6 · Telegram | Criar o bot com o **@BotFather** e guardar o token |
 | 8 · Produção | Revisar variáveis, rotacionar chaves, ativar backups |
+
+---
+
+## F. Testar no iPhone
+
+- **iPhone real (Wi-Fi):** `pnpm dev:lan` e abra no Safari o endereço impresso. Detalhes e problemas
+  comuns no README, seção 13.
+- **iOS Simulator:** instale o **Xcode** pela App Store, rode
+  `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer`, instale um simulador em
+  *Xcode → Settings → Components* e registre o MCP: `claude mcp add xcodebuild -- npx -y xcodebuildmcp@latest mcp`.
+- **Emulação (já pronto):** `pnpm test:e2e:ios`.

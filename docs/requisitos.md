@@ -1,7 +1,7 @@
 # Requisitos e regras de negócio
 
 > Responsável: **Analista de Sistemas/Negócios**. Revisado pelo Arquiteto.
-> Status: Fase 0 concluída. Requisitos de fases futuras são o "contrato" que cada fase deve cumprir.
+> Status: Fases 0, 1 e 2 concluídas. Requisitos de fases futuras são o "contrato" que cada fase deve cumprir.
 
 ## 1. Visão do produto
 
@@ -46,8 +46,11 @@ Legenda de fase: **F1** = Fundação (feito), **F2…F8** = fases futuras.
 | RF-08 | O usuário alterna entre espaço individual e famílias; a escolha fica salva (vale em qualquer dispositivo). | F1 ✅ |
 | RF-09 | Admin altera papéis, remove membros, revoga convites e renomeia a família. Membro pode sair. Dono pode excluir a família. | F1 ✅ |
 | RF-10 | Tema escuro (padrão) e claro. | F1 ✅ |
+| RF-11 | Troca de e-mail com confirmação nos dois endereços (exige senha atual). | F1 ✅ |
+| RF-12 | Transferir a posse de uma família para outro membro. | F1 ✅ |
+| RF-13 | Excluir a própria conta (regras RN-40…RN-44). | F1 ✅ |
 
-### 3.2 Receitas e despesas (F2)
+### 3.2 Receitas e despesas (F2 ✅)
 | ID | Requisito |
 |---|---|
 | RF-20 | Lançar receita/despesa com valor, descrição, categoria, data, forma de pagamento (pix, débito, crédito, dinheiro, transferência, boleto, outro) e, opcionalmente, quem gastou/recebeu. |
@@ -58,7 +61,14 @@ Legenda de fase: **F1** = Fundação (feito), **F2…F8** = fases futuras.
 | RF-25 | Compra no crédito cai automaticamente na **fatura correta** (ver RN-10). |
 | RF-26 | Compra **parcelada** gera N parcelas em faturas consecutivas (ver RN-11). |
 | RF-27 | Pagar fatura (marca como paga, registra conta de origem). |
-| RF-28 | Editar e excluir lançamentos (respeitando papéis, RN-03). |
+| RF-28 | Editar e excluir lançamentos (respeitando papéis, RN-03), com **desfazer** por 24 h. |
+| RF-29 | Transferências entre contas do mesmo espaço (não contam como receita/despesa). |
+| RF-29a | Contas/carteiras com saldo **calculado** (nunca digitado). |
+| RF-29b | Limite disponível do cartão calculado. |
+| RF-29c | Lista de lançamentos agrupada por dia, com total do dia, busca e filtros (período, tipo, categoria, membro, conta, cartão). |
+| RF-29d | Subcategorias (1 nível); excluir categoria em uso exige escolher outra para receber os lançamentos. |
+| RF-29e | Recorrências semanais, mensais e anuais; previstas ou confirmadas; editar "daqui pra frente". |
+| RF-29f | Parcelas: editar/excluir "só esta", "esta e as próximas" ou "todas". |
 
 ### 3.3 Dashboard (F3)
 | ID | Requisito |
@@ -145,12 +155,19 @@ Legenda de fase: **F1** = Fundação (feito), **F2…F8** = fases futuras.
   - Exemplo: fecha dia 3, vence dia 10. Compra em 02/11 → fatura de **nov** (vence 10/11). Compra em 03/11 → fatura de **dez** (vence 10/12).
 - **RN-11 (parcelamento)** Total dividido em N parcelas inteiras; o resto dos centavos vai para a **1ª parcela** (R$ 100,00 em 3x = 33,34 + 33,33 + 33,33). A parcela *k* cai na fatura *k−1* meses após a fatura da compra. 2 a 48 parcelas.
 - **RN-12** Receitas não podem ser lançadas no crédito (estornos são tratados na F7).
-- **RN-13** Fatura paga não recebe novos lançamentos; uma compra que cairia nela vai para a próxima fatura aberta.
+- **RN-13** ~~Fatura paga não recebe novos lançamentos~~ (substituída na Fase 2): a compra **sempre** vai para a
+  fatura do seu ciclo, como no banco. Se cair numa fatura já paga, ela volta a ter saldo a pagar (status calculado, RN-54).
 
 ### Recorrências
 - **RN-14** Geradas mensalmente, uma vez por (recorrência, mês) — garantido por índice único. Ficam como **previstas** (`is_settled = false`) até serem confirmadas.
 - **RN-15** Dia 29–31 em meses curtos → último dia do mês.
-- **RN-16** Alterar o valor de uma recorrência afeta só os meses **ainda não gerados**.
+- **RN-16** Alterar uma recorrência afeta só os meses **ainda não gerados**; opcionalmente ("aplicar aos previstos")
+  refaz também os lançamentos **previstos a partir de hoje**. Confirmados e passados nunca mudam.
+- **RN-17** Frequências: semanal (mesmo dia da semana do início), mensal, anual (mesmo mês do início).
+- **RN-18** Recorrências são geradas até o fim do mês corrente: na criação e diariamente às 03:00 (pg_cron).
+  Rodar duas vezes não duplica; ocorrência excluída pelo usuário não volta.
+- **RN-19** Categoria em uso não pode ser excluída sem reatribuição (garantido por FK `RESTRICT`).
+  Subcategoria tem o mesmo tipo da mãe e só um nível.
 
 ### Metas e projeções
 - **RN-20** Saldo da meta = soma dos aportes (resgates são negativos). Meta atingida quando saldo ≥ alvo.
@@ -163,7 +180,33 @@ Legenda de fase: **F1** = Fundação (feito), **F2…F8** = fases futuras.
 - **RN-31** O bot só registra com confiança suficiente; senão, pergunta. "Desfazer" apaga apenas o último lançamento **criado pelo bot para aquele usuário** nas últimas 24 h.
 - **RN-32** Limite de taxa do bot: 30 mensagens/min e 500/dia por número.
 
-## 6. Fluxo de lançamento em 3 toques (F2)
+### Conta e posse (Fase 1 — pendências)
+- **RN-40** Ações sensíveis (trocar e-mail, excluir conta) exigem a senha atual.
+- **RN-41** Troca de e-mail só se completa após confirmar nos **dois** endereços.
+- **RN-42** Só o dono transfere a posse, e só para um membro; o novo dono vira admin.
+- **RN-43** Exclusão de conta é bloqueada se o usuário for dono de família **com outros membros**.
+- **RN-44** Ao excluir a conta: apaga espaço individual e famílias em que está sozinho; nas demais, os
+  registros ficam **anonimizados** (sem autor/"quem gastou"), preservando as contas da família.
+
+### Regra contábil (Fase 2) — ver ADR-0010
+- **RN-50** Transferência entre contas não é receita nem despesa.
+- **RN-51** A **compra no crédito é a despesa** e conta na **data da compra**. Parcela *k* conta na data da
+  compra + (k−1) meses (dia preso ao fim do mês).
+- **RN-52** Saldo da conta = saldo inicial + receitas confirmadas − despesas confirmadas (fora do crédito)
+  + transferências recebidas − transferências enviadas − pagamentos de fatura. Previstos aparecem à parte.
+- **RN-53** **Pagar a fatura não é despesa**: é saída da conta para o cartão. Não altera "despesas do mês"
+  (a despesa já foi contada na compra) — assim nada é contado duas vezes.
+- **RN-54** Status da fatura é calculado: **paga** (pagamentos ≥ total) → **vencida** (passou do vencimento
+  com saldo) → **fechada** (passou do fechamento) → **aberta**. Pagamento parcial é permitido.
+- **RN-55** Limite usado = soma das compras no cartão (inclui parcelas futuras) − pagamentos; disponível =
+  limite − usado.
+- **RN-56** Membro edita/exclui só o que criou; admin edita tudo (vale para lançamentos, transferências e
+  pagamentos de fatura).
+- **RN-57** Toda criação/alteração/exclusão fica na trilha de auditoria (quem, quando, antes/depois).
+- **RN-58** Exclusão de lançamento pode ser desfeita por até 24 h (por quem excluiu ou admin), mantendo o
+  autor original.
+
+## 6. Fluxo de lançamento em 3 toques (F2 ✅)
 1. **Toque 1**: botão **+** (sempre visível na barra inferior).
 2. Teclado numérico abre já focado no valor; a pessoa digita o valor (digitar não conta como toque).
 3. **Toque 2**: escolhe a categoria numa grade com as 8 mais usadas (padrão: despesa, hoje, forma de pagamento mais usada).
@@ -192,7 +235,17 @@ Exceções: logado com outro e-mail (oferece trocar de conta), convite expirado/
 - Dois cliques em "aceitar" → o segundo recebe "convite já usado" (lock `FOR UPDATE`).
 - Primeira consulta logo após login falhando com "JWT issued at future" (relógio do PostgREST) → repetida automaticamente após 1 s.
 
-## 9. Critérios de aceite da Fase 1 (todos verificados)
+## 9. Critérios de aceite da Fase 2 (verificados)
+- [x] Lançar despesa em 3 toques (teste E2E conta os toques) no desktop, iPhone 15, iPhone SE e Android.
+- [x] Compra no dia do fechamento cai na fatura seguinte; virada de ano e fevereiro testados (pgTAP + Vitest).
+- [x] R$ 100 em 3x = 33,34 + 33,33 + 33,33; R$ 10,01 em 2x = 5,01 + 5,00.
+- [x] Recorrência rodada duas vezes não duplica; dia 31 → último dia do mês.
+- [x] Pagar a fatura muda o status para "Paga" e não cria despesa.
+- [x] Membro não exclui transferência de outra pessoa; estranho não vê saldos/faturas/auditoria.
+- [x] Categoria em uso só é excluída movendo os lançamentos.
+- [x] Excluir lançamento e desfazer.
+
+## 10. Critérios de aceite da Fase 1 (todos verificados)
 - [x] Cadastro → e-mail de confirmação (pt-BR) → login automático no painel.
 - [x] Login com senha errada mostra "E-mail ou senha incorretos." e mantém o e-mail digitado.
 - [x] Recuperação de senha troca a senha e o login com a nova funciona.

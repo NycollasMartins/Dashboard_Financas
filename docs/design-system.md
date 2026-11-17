@@ -70,7 +70,12 @@ as colunas alinharem.
 | `EmptyState` | `components/empty-state.tsx` | Ícone + título + texto + ação, borda tracejada |
 | `Field` / `PasswordField` / `SubmitButton` / `FormMessage` | `components/forms/fields.tsx` | Formulário acessível (label, erro com `aria-describedby`, estado pendente) |
 | `WorkspaceSwitcher` | `components/app-shell/workspace-switcher.tsx` | Alterna individual/família (ícone: pessoa = menta, casa = violeta) |
-| `AppShell` | `components/app-shell/app-shell.tsx` | Sidebar (desktop) + topo e barra inferior com botão **+** central (celular) |
+| `AppShell` | `components/app-shell/app-shell.tsx` | Sidebar (desktop) + topo e barra inferior **sólida** com botão **+** central (celular) |
+| `Sheet` | `components/ui/sheet.tsx` | Folha que sobe de baixo no celular (alça, safe area, até 92dvh) e vira painel central no desktop. Formulário longo: `scroll={false}` + rodapé fixo |
+| `MoneyInput` | `components/ledger/money-input.tsx` | Valor com máscara BRL da direita para a esquerda, `inputMode="decimal"`, envia centavos |
+| `EntrySheet` | `components/ledger/entry-sheet.tsx` | Lançamento rápido: tipo (segmentado) → valor grande → grade 4×2 de categorias (mais usadas) → chips de pagamento → "Mais opções" → **Salvar** fixo |
+| `CategoryIcon` | `components/ledger/category-icon.tsx` | Ícone sobre a cor da categoria a 18% |
+| `InvoiceStatusBadge` | `components/ledger/invoice-status.tsx` | Aberta (menta) · Fechada (âmbar) · Vencida (vermelho) · Paga (verde) |
 
 ## Layout
 - **Desktop (≥ 1024 px):** sidebar fixa de 272 px (logo, seletor de espaço, navegação, atalho de lançamento, usuário).
@@ -84,3 +89,10 @@ as colunas alinharem.
 - Ações destrutivas sempre com diálogo de confirmação explicando a consequência.
 - Formulários mantêm os valores digitados quando há erro.
 - Lançamento rápido em 3 toques: ver `docs/requisitos.md` §6.
+
+## Regras de layout aprendidas na Fase 2
+- Grids de página usam `grid-cols-[minmax(0,1fr)]`: sem isso, itens com texto longo alargam a coluna e a
+  página rola para os lados no iPhone.
+- Barras fixas sobre conteúdo (barra inferior) são **sólidas**; translucidez fica para o topo.
+- Ações secundárias de linhas de lista vão para uma **segunda linha** no celular.
+- Meses: "Dezembro de 2026" (só a 1ª maiúscula) — nunca `text-transform: capitalize`, que gera "De".

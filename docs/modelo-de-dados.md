@@ -35,6 +35,12 @@ erDiagram
     INSTALLMENT_PLANS |o--o{ TRANSACTIONS : "parcela k/N"
     RECURRENCES |o--o{ TRANSACTIONS : "gerada por"
     IMPORT_BATCHES |o--o{ TRANSACTIONS : "importada em"
+    WORKSPACES ||--o{ TRANSFERS : "entre contas"
+    ACCOUNTS ||--o{ TRANSFERS : "origem/destino"
+    CARD_INVOICES ||--o{ INVOICE_PAYMENTS : "pagamentos"
+    ACCOUNTS |o--o{ INVOICE_PAYMENTS : "pago com"
+    CATEGORIES |o--o{ CATEGORIES : "subcategoria"
+    WORKSPACES ||--o{ AUDIT_LOG : "auditoria"
     WORKSPACES ||--o{ GOALS : ""
     GOALS ||--o{ GOAL_CONTRIBUTIONS : aportes
 
@@ -75,7 +81,7 @@ erDiagram
         uuid card_id FK
         uuid invoice_id FK
         smallint installment_number
-        date recurrence_month
+        date recurrence_date
         text dedupe_hash
         uuid member_user_id
         enum source "manual | recurrence | import | whatsapp | telegram"
@@ -92,7 +98,29 @@ erDiagram
         date reference_month "mês do vencimento"
         date closing_date
         date due_date
-        enum status "open | closed | paid"
+    }
+    INVOICE_PAYMENTS {
+        uuid id PK
+        uuid invoice_id FK
+        uuid account_id FK
+        bigint amount_cents
+        date paid_on
+    }
+    TRANSFERS {
+        uuid id PK
+        uuid from_account_id FK
+        uuid to_account_id FK
+        bigint amount_cents
+        date occurred_on
+    }
+    AUDIT_LOG {
+        bigint id PK
+        text table_name
+        uuid record_id
+        text action
+        uuid actor_id
+        jsonb old_data
+        jsonb new_data
     }
     GOALS {
         uuid id PK
@@ -149,6 +177,38 @@ erDiagram
 ### Diretório (migration 0004)
 `get_workspace_members(workspace_id)` — RPC que devolve nome + **e-mail** dos membros (e-mails vivem em
 `auth.users`, inacessível ao cliente), somente para quem participa do espaço.
+
+### Fase 2 (migration 0006)
+| Item | O que é |
+|---|---|
+| `transfers` | Transferência entre duas contas do mesmo espaço. **Não** é receita nem despesa. |
+| `invoice_payments` | Pagamento (total ou parcial) de uma fatura, saindo de uma conta. **Não** é despesa (ADR-0010). |
+| `audit_log` | Trilha de auditoria: quem, quando, antes/depois (jsonb). Leitura para membros; escrita só por trigger. |
+| `card_invoices` | Perdeu `status/paid_at/...`: agora tudo isso é **calculado**. Criada sob demanda por `private.ensure_invoice`. |
+| `categories.parent_id` | Subcategoria (1 nível, mesmo tipo da mãe). FKs para categoria agora são `RESTRICT`. |
+| `recurrences` | `frequency` (semanal/mensal/anual), `auto_confirm`, `last_generated_on`. |
+| `transactions` | `recurrence_date` (data da ocorrência) e `updated_by`. Fatura atribuída por trigger no crédito. |
+
+**Views calculadas** (`security_invoker = true` → respeitam a RLS de quem consulta):
+| View | Calcula |
+|---|---|
+| `account_balances` | Saldo confirmado e previsto de cada conta (RN-52). |
+| `card_invoice_summaries` | Total, pago, restante, nº de itens e **status** de cada fatura (RN-54). |
+| `credit_card_summaries` | Limite usado e disponível de cada cartão (RN-55). |
+
+**Funções principais**
+| Função | Uso |
+|---|---|
+| `private.invoice_cycle(fecha, vence, data)` | Regra da fatura (RN-10). Espelho em `src/lib/domain/invoice.ts`. |
+| `create_card_purchase(...)` | Compra no cartão à vista ou em N parcelas (RN-11), numa única transação. |
+| `update_installments / delete_installments(id, escopo)` | Parcelas: só esta / esta e as próximas / todas. |
+| `private.generate_recurrence` + job pg_cron `gerar-recorrencias` | Geração idempotente (RN-14…18). |
+| `apply_recurrence_to_future(id)` | Refaz os previstos a partir de hoje após editar. |
+| `delete_category(id, destino)` | Exclui reatribuindo lançamentos (RN-19). |
+| `restore_deleted_transaction(id)` | Desfazer exclusão a partir da auditoria (RN-58). |
+
+### Ciclo de vida da conta (migration 0005)
+`transfer_workspace_ownership`, `get_account_deletion_blockers`, `delete_my_account` (ADR-0013).
 
 ## Isolamento: como a RLS funciona aqui
 

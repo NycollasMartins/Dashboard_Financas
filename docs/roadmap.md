@@ -4,8 +4,8 @@
 |---|---|---|
 | 0 | Planejamento: requisitos, arquitetura, modelo de dados, RLS, design system | ✅ Concluída |
 | 1 | Fundação: projeto, Supabase, migrations + RLS, auth, família/convites, alternância de espaço, layout | ✅ Concluída |
-| 2 | Receitas, despesas, categorias, contas, cartões, faturas, parcelamento, recorrências | ⏭️ Próxima |
-| 3 | Dashboard e gráficos | Planejada |
+| 2 | Receitas, despesas, categorias, contas, cartões, faturas, parcelamento, recorrências | ✅ Concluída |
+| 3 | Dashboard e gráficos | ⏭️ Próxima |
 | 4 | Metas e projeções | Planejada |
 | 5 | IA de interpretação de mensagens | Planejada |
 | 6 | WhatsApp (Cloud API) + Telegram | Planejada |
@@ -15,16 +15,23 @@
 > O deploy em produção (Supabase em nuvem + Vercel) pode ser feito **já** ao fim da Fase 1, seguindo
 > `docs/setup-manual.md`. A Fase 8 trata do hardening final, não do primeiro deploy.
 
-## Fase 2 · Lançamentos e cartões
+## Entregue além do planejado
+- **Fase 1+**: troca de e-mail, exclusão de conta, transferência de posse (ADR-0013); ambiente de testes
+  iPhone/Android com Playwright WebKit, CI no GitHub Actions, `pnpm dev:lan`, ícones e manifest PWA (ADR-0012).
+- **Fase 2+**: transferências, auditoria com desfazer (ADR-0009), subcategorias, recorrências semanais/anuais.
+
+## Fase 2 · Lançamentos e cartões ✅
 - **Back-end:** funções puras e testadas `invoiceFor(purchaseDate, card)` (RN-10) e geração de parcelas
-  (RN-11); RPC `create_credit_purchase` (cria/acha a fatura e as parcelas numa transação só);
+  (RN-11); RPC `create_card_purchase` (cria/acha a fatura e as parcelas numa transação só);
   geração de recorrências por **pg_cron** diário (idempotente, RN-14); pagamento de fatura.
 - **Front-end:** lista de lançamentos com filtro por mês; folha de **lançamento rápido em 3 toques**
   (teclado numérico, grade de categorias, chips de ajuste); CRUD de categorias, contas, cartões e recorrências.
 - **Aceite:** compra no dia do fechamento cai na fatura seguinte; 3x de R$ 100 = 33,34/33,33/33,33;
   recorrência rodada duas vezes no mesmo mês não duplica; membro não edita lançamento alheio.
 
-## Fase 3 · Dashboard
+## Fase 3 · Dashboard (próxima)
+- Incluir alternância "por competência" (padrão) × "por fatura/caixa" nos gráficos (ADR-0010).
+- Pendente herdado: retenção do `audit_log` (Fase 8).
 - Views/RPCs agregadas por mês e categoria (com índices), sempre filtradas pela RLS.
 - KPIs reais (receitas, despesas, saldo, guardado, faturas abertas), gráficos (categoria, evolução,
   comparação mês a mês, metas) com Recharts, filtros (período, categoria, membro, cartão) na URL.
