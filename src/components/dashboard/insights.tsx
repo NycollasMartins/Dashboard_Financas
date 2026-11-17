@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { AlertTriangle, ChevronRight, Info, Lightbulb, ThumbsUp } from "lucide-react";
-import { usePrivacy } from "@/components/privacy/privacy";
+import { usePrivacyHidden } from "@/components/privacy/privacy";
 import type { Insight } from "@/lib/analytics/insights";
 import { cn } from "@/lib/utils";
 
@@ -11,7 +11,7 @@ const LABEL = { bad: "Alerta", warning: "Atenção", good: "Bom sinal", info: "I
 
 /** Insights por regras (sem IA). Com "ocultar valores", troca pelo texto sem números. */
 export function InsightsCard({ insights }: { insights: Insight[] }) {
-  const { hidden } = usePrivacy();
+  const hidden = usePrivacyHidden();
   if (insights.length === 0) return null;
   return (
     <section aria-labelledby="insights-title" className="grid gap-3 rounded-2xl border bg-card p-4 animate-rise sm:p-5">

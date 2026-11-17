@@ -143,7 +143,15 @@ export function CategoryBreakdown({
 }
 
 /** Comparação com a média dos 3 meses anteriores: barra (período) + marca (média). */
-export function AverageComparison({ nodes, months }: { nodes: CategoryNode[]; months: number }) {
+export function AverageComparison({ nodes, months, monthOnly }: { nodes: CategoryNode[]; months: number; monthOnly?: boolean }) {
+  if (monthOnly) {
+    return (
+      <section aria-labelledby="media-title" className="grid content-start gap-3 rounded-2xl border bg-card p-5 animate-rise">
+        <h2 id="media-title" className="text-base font-semibold">Comparação com a média</h2>
+        <SectionEmpty icon={PieChart} text="Disponível na visão por mês: escolha um mês para comparar cada categoria com a média dos 3 meses anteriores." />
+      </section>
+    );
+  }
   const rows = nodes
     .filter((n) => n.id !== null && (n.totalCents > 0 || n.averageCents > 0))
     .sort((a, b) => Math.max(b.totalCents, b.averageCents) - Math.max(a.totalCents, a.averageCents))

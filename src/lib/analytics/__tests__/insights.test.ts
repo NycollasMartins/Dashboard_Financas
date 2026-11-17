@@ -33,6 +33,10 @@ describe("buildInsights", () => {
     expect(i.href).toBe("/l?c=d");
   });
 
+  it("sem comparação com a média fora da visão por mês (ano/intervalo)", () => {
+    expect(ids({ ...base, compareToAverage: false, categories: [cat({ id: "d", totalCents: 66000, averageCents: 50000 })] })).toEqual([]);
+  });
+
   it("ignora variação pequena em valor ou em percentual", () => {
     expect(ids({ ...base, categories: [cat({ totalCents: 6000, averageCents: 2000 })] })).toEqual([]);
     expect(ids({ ...base, categories: [cat({ totalCents: 110000, averageCents: 100000 })] })).toEqual([]);

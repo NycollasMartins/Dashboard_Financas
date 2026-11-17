@@ -234,6 +234,7 @@ async function Insights({ ctx }: { ctx: Ctx }) {
     expensePlannedCents: cur.expensePlannedCents,
     projectedBalanceCents: end.isProjection ? end.projectedBalanceCents : null,
     categories: tree,
+    compareToAverage: period.kind === "month",
     overdueCount: overdue.length,
     overdueCents: overdue.reduce((a, u) => a + u.amountCents, 0),
     cardUsage: now.limitCents > 0 ? (now.limitCents - now.availableLimitCents) / now.limitCents : null,
@@ -250,7 +251,7 @@ async function Categories({ ctx }: { ctx: Ctx }) {
 
 async function Comparison({ ctx }: { ctx: Ctx }) {
   const tree = await loadCategoryTree(ctx.scope, ctx.period, ctx.lookups);
-  return <AverageComparison nodes={tree} months={ctx.period.months} />;
+  return <AverageComparison nodes={tree} months={ctx.period.months} monthOnly={ctx.period.kind !== "month"} />;
 }
 
 async function Upcoming({ ctx }: { ctx: Ctx }) {

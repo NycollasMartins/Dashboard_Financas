@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { usePrivacy } from "@/components/privacy/privacy";
+import { usePrivacyHidden } from "@/components/privacy/privacy";
 import { formatMonthShort, formatMonthTitle, type ISODate } from "@/lib/dates";
 import { formatBRL } from "@/lib/money";
 import { cn } from "@/lib/utils";
@@ -25,7 +25,7 @@ const PLOT_H = 200; // px — o eixo X fica FORA desta altura (não corta rótul
  * Tocar/clicar numa coluna abre aquele mês no painel.
  */
 export function TrendChart({ points, selected, basisLabel }: { points: TrendPoint[]; selected: string[]; basisLabel: string }) {
-  const { hidden } = usePrivacy();
+  const hidden = usePrivacyHidden();
   const { go } = useDashboardNav();
   const [active, setActive] = useState<number | null>(null);
 

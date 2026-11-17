@@ -30,6 +30,8 @@ export type InsightInput = {
   overdueCents: number;
   /** Uso do limite dos cartões (0–1), null sem limite cadastrado. */
   cardUsage: number | null;
+  /** Comparar categorias com a média de 3 meses? Só faz sentido na visão por mês. */
+  compareToAverage?: boolean;
   /** Para montar o link da lista de lançamentos filtrada. */
   ledgerHref?: (categoryId: string) => string;
 };
@@ -74,7 +76,7 @@ export function buildInsights(input: InsightInput, limit = 4): Insight[] {
   }
 
   // Categorias acima/abaixo da média dos últimos 3 meses
-  const withAvg = input.categories.filter((c) => c.averageCents > 0 && c.id !== null);
+  const withAvg = input.compareToAverage === false ? [] : input.categories.filter((c) => c.averageCents > 0 && c.id !== null);
   const ups = withAvg
     .map((c) => ({ c, diff: c.totalCents - c.averageCents, pct: (c.totalCents - c.averageCents) / c.averageCents }))
     .filter((x) => x.pct >= MIN_PCT && x.diff >= MIN_DIFF_CENTS)

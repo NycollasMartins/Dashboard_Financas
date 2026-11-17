@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { setHideAmountsAction } from "@/app/(app)/_actions/preferences";
+import { useMounted } from "@/lib/use-mounted";
 import { cn } from "@/lib/utils";
 
 /*
@@ -12,7 +13,11 @@ import { cn } from "@/lib/utils";
  * esconder eixos e tooltips. O valor inicial vem do perfil (renderizado no
  * servidor → sem piscar valores ao abrir o app).
  */
-const PrivacyContext = createContext<{ hidden: boolean; toggle: () => void }>({ hidden: false, toggle: () => {} });
+const PrivacyContext = createContext<{ hidden: boolean; initialHidden: boolean; toggle: () => void }>({
+  hidden: false,
+  initialHidden: false,
+  toggle: () => {},
+});
 
 export function PrivacyProvider({ initialHidden, children }: { initialHidden: boolean; children: React.ReactNode }) {
   // Estado local: troca na hora; o servidor só guarda a preferência.
@@ -27,7 +32,7 @@ export function PrivacyProvider({ initialHidden, children }: { initialHidden: bo
   }, [hidden]);
 
   return (
-    <PrivacyContext value={{ hidden, toggle }}>
+    <PrivacyContext value={{ hidden, initialHidden, toggle }}>
       <div data-privacy={hidden ? "on" : "off"} className="contents">
         {children}
       </div>
@@ -37,6 +42,18 @@ export function PrivacyProvider({ initialHidden, children }: { initialHidden: bo
 
 export function usePrivacy() {
   return useContext(PrivacyContext);
+}
+
+/**
+ * Para componentes que RENDERIZAM diferente com valores ocultos (gráficos,
+ * insights): enquanto o bloco hidrata, usa o valor com que o servidor renderizou.
+ * Sem isso, tocar no olho antes de um bloco em streaming hidratar causava
+ * "hydration mismatch" (achado nos testes E2E da Fase 3).
+ */
+export function usePrivacyHidden() {
+  const { hidden, initialHidden } = useContext(PrivacyContext);
+  const mounted = useMounted();
+  return mounted ? hidden : initialHidden;
 }
 
 export function PrivacyToggle({ className }: { className?: string }) {
