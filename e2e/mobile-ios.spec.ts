@@ -11,7 +11,7 @@ async function noHorizontalScroll(page: Page) {
   expect(overflow, "a página não pode rolar na horizontal").toBeLessThanOrEqual(0);
 }
 
-for (const path of ["/painel", "/familia", "/configuracoes", "/lancamentos", "/cartoes"]) {
+for (const path of ["/painel", "/familia", "/configuracoes", "/lancamentos", "/cartoes", "/contas", "/recorrencias", "/categorias", "/mais"]) {
   test(`layout sem rolagem horizontal em ${path}`, async ({ page }) => {
     await page.goto(path);
     await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
@@ -75,4 +75,20 @@ test("seletor de espaço abre e lista individual + família", async ({ page }) =
   await page.getByRole("button", { name: "Trocar de espaço" }).filter({ visible: true }).click();
   await expect(page.getByRole("menuitem", { name: /Pessoal/ })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: /Casa Teste/ })).toBeVisible();
+});
+
+test("folha de lançamento cabe na tela e o botão Salvar fica visível", async ({ page }) => {
+  await page.goto("/lancamentos");
+  await page.getByRole("button", { name: "Novo lançamento" }).filter({ visible: true }).first().click();
+  const dialog = page.getByRole("dialog", { name: "Novo lançamento" });
+  await expect(dialog).toBeVisible();
+  const box = await dialog.boundingBox();
+  const vp = page.viewportSize()!;
+  expect(box!.height).toBeLessThanOrEqual(vp.height);
+  await expect(dialog.getByRole("button", { name: "Salvar", exact: true })).toBeInViewport();
+  // Alvos de toque das categorias ≥ 44px
+  for (const radio of (await dialog.getByRole("radio").all()).slice(0, 6)) {
+    const b = await radio.boundingBox();
+    expect(b!.height).toBeGreaterThanOrEqual(44);
+  }
 });
