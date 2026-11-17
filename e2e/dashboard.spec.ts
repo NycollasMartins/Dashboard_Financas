@@ -131,7 +131,10 @@ test("ocultar valores esconde os R$ e a preferência fica salva no perfil", asyn
   } finally {
     // Sempre volta ao normal: os outros testes leem os valores.
     await page.goto("/painel");
-    if (await page.getByRole("button", { name: "Mostrar valores" }).filter({ visible: true }).count()) {
+    // Espera o botão do olho existir (em qualquer estado) antes de decidir.
+    const eye = page.getByRole("button", { name: /^(Mostrar|Ocultar) valores$/ }).filter({ visible: true }).first();
+    await expect(eye).toBeVisible();
+    if ((await eye.getAttribute("aria-pressed")) === "true") {
       await togglePrivacy(page, "Mostrar valores");
     }
   }
