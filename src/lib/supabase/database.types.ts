@@ -485,9 +485,13 @@ export type Database = {
           created_by: string | null
           goal_id: string
           id: string
+          is_planned: boolean
           member_user_id: string | null
           note: string | null
+          recurrence_date: string | null
+          recurrence_id: string | null
           source: Database["public"]["Enums"]["entry_source"]
+          updated_at: string
           workspace_id: string
         }
         Insert: {
@@ -498,9 +502,13 @@ export type Database = {
           created_by?: string | null
           goal_id: string
           id?: string
+          is_planned?: boolean
           member_user_id?: string | null
           note?: string | null
+          recurrence_date?: string | null
+          recurrence_id?: string | null
           source?: Database["public"]["Enums"]["entry_source"]
+          updated_at?: string
           workspace_id: string
         }
         Update: {
@@ -511,9 +519,13 @@ export type Database = {
           created_by?: string | null
           goal_id?: string
           id?: string
+          is_planned?: boolean
           member_user_id?: string | null
           note?: string | null
+          recurrence_date?: string | null
+          recurrence_id?: string | null
           source?: Database["public"]["Enums"]["entry_source"]
+          updated_at?: string
           workspace_id?: string
         }
         Relationships: [
@@ -535,7 +547,21 @@ export type Database = {
             foreignKeyName: "goal_contributions_goal_id_workspace_id_fkey"
             columns: ["goal_id", "workspace_id"]
             isOneToOne: false
+            referencedRelation: "goal_summaries"
+            referencedColumns: ["goal_id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "goal_contributions_goal_id_workspace_id_fkey"
+            columns: ["goal_id", "workspace_id"]
+            isOneToOne: false
             referencedRelation: "goals"
+            referencedColumns: ["id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "goal_contributions_recurrence_fk"
+            columns: ["recurrence_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "recurrences"
             referencedColumns: ["id", "workspace_id"]
           },
         ]
@@ -543,12 +569,17 @@ export type Database = {
       goals: {
         Row: {
           achieved_at: string | null
+          annual_return_bps: number
           color: string
           created_at: string
           created_by: string | null
           icon: string
           id: string
+          initial_cents: number
           name: string
+          notes: string | null
+          priority: number
+          reserve_account_id: string | null
           status: Database["public"]["Enums"]["goal_status"]
           target_cents: number
           target_date: string | null
@@ -557,12 +588,17 @@ export type Database = {
         }
         Insert: {
           achieved_at?: string | null
+          annual_return_bps?: number
           color?: string
           created_at?: string
           created_by?: string | null
           icon?: string
           id?: string
+          initial_cents?: number
           name: string
+          notes?: string | null
+          priority?: number
+          reserve_account_id?: string | null
           status?: Database["public"]["Enums"]["goal_status"]
           target_cents: number
           target_date?: string | null
@@ -571,12 +607,17 @@ export type Database = {
         }
         Update: {
           achieved_at?: string | null
+          annual_return_bps?: number
           color?: string
           created_at?: string
           created_by?: string | null
           icon?: string
           id?: string
+          initial_cents?: number
           name?: string
+          notes?: string | null
+          priority?: number
+          reserve_account_id?: string | null
           status?: Database["public"]["Enums"]["goal_status"]
           target_cents?: number
           target_date?: string | null
@@ -584,6 +625,20 @@ export type Database = {
           workspace_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "goals_reserve_fk"
+            columns: ["reserve_account_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "account_balances"
+            referencedColumns: ["account_id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "goals_reserve_fk"
+            columns: ["reserve_account_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id", "workspace_id"]
+          },
           {
             foreignKeyName: "goals_workspace_id_fkey"
             columns: ["workspace_id"]
@@ -889,6 +944,7 @@ export type Database = {
           description: string
           ends_on: string | null
           frequency: Database["public"]["Enums"]["recurrence_frequency"]
+          goal_id: string | null
           id: string
           is_active: boolean
           kind: Database["public"]["Enums"]["transaction_kind"]
@@ -911,6 +967,7 @@ export type Database = {
           description: string
           ends_on?: string | null
           frequency?: Database["public"]["Enums"]["recurrence_frequency"]
+          goal_id?: string | null
           id?: string
           is_active?: boolean
           kind: Database["public"]["Enums"]["transaction_kind"]
@@ -933,6 +990,7 @@ export type Database = {
           description?: string
           ends_on?: string | null
           frequency?: Database["public"]["Enums"]["recurrence_frequency"]
+          goal_id?: string | null
           id?: string
           is_active?: boolean
           kind?: Database["public"]["Enums"]["transaction_kind"]
@@ -977,6 +1035,20 @@ export type Database = {
             columns: ["category_id", "workspace_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "recurrences_goal_fk"
+            columns: ["goal_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "goal_summaries"
+            referencedColumns: ["goal_id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "recurrences_goal_fk"
+            columns: ["goal_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
             referencedColumns: ["id", "workspace_id"]
           },
           {
@@ -1442,6 +1514,62 @@ export type Database = {
           },
         ]
       }
+      goal_summaries: {
+        Row: {
+          achieved_at: string | null
+          annual_return_bps: number | null
+          color: string | null
+          contributions_count: number | null
+          created_at: string | null
+          deposited_cents: number | null
+          goal_id: string | null
+          icon: string | null
+          initial_cents: number | null
+          last_contribution_on: string | null
+          name: string | null
+          notes: string | null
+          plan_account_id: string | null
+          plan_amount_cents: number | null
+          plan_auto_confirm: boolean | null
+          plan_day: number | null
+          plan_frequency:
+            | Database["public"]["Enums"]["recurrence_frequency"]
+            | null
+          plan_recurrence_id: string | null
+          planned_cents: number | null
+          priority: number | null
+          reserve_account_id: string | null
+          saved_cents: number | null
+          status: Database["public"]["Enums"]["goal_status"] | null
+          target_cents: number | null
+          target_date: string | null
+          withdrawn_cents: number | null
+          workspace_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goals_reserve_fk"
+            columns: ["reserve_account_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "account_balances"
+            referencedColumns: ["account_id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "goals_reserve_fk"
+            columns: ["reserve_account_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "goals_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       accept_workspace_invite: { Args: { p_token: string }; Returns: string }
@@ -1509,6 +1637,7 @@ export type Database = {
           p_card_id?: string
           p_category_id?: string
           p_from: string
+          p_include_projected?: boolean
           p_member_id?: string
           p_to: string
           p_workspace_id: string
@@ -1523,7 +1652,9 @@ export type Database = {
           installment_number: number
           installment_total: number
           invoice_id: string
+          is_fixed: boolean
           is_planned: boolean
+          is_projected: boolean
           kind: Database["public"]["Enums"]["transaction_kind"]
           member_id: string
           occurred_on: string
@@ -1567,7 +1698,24 @@ export type Database = {
           open_invoices_cents: number
           planned_expense_cents: number
           planned_income_cents: number
+          planned_savings_cents: number
           projected_balance_cents: number
+        }[]
+      }
+      analytics_savings: {
+        Args: {
+          p_account_id?: string
+          p_from: string
+          p_member_id?: string
+          p_to: string
+          p_workspace_id: string
+        }
+        Returns: {
+          deposited_cents: number
+          entries: number
+          planned_cents: number
+          saved_cents: number
+          withdrawn_cents: number
         }[]
       }
       analytics_totals: {
@@ -1692,6 +1840,18 @@ export type Database = {
         Args: { p_key: string; p_max: number; p_window_seconds: number }
         Returns: boolean
       }
+      planning_capacity_inputs: {
+        Args: { p_months?: number; p_workspace_id: string }
+        Returns: {
+          expense_fixed_cents: number
+          expense_variable_cents: number
+          income_fixed_cents: number
+          income_variable_cents: number
+          is_projection: boolean
+          month: string
+          saved_cents: number
+        }[]
+      }
       restore_deleted_transaction: {
         Args: { p_transaction_id: string }
         Returns: string
@@ -1717,7 +1877,7 @@ export type Database = {
       analytics_basis: "accrual" | "cash"
       channel_kind: "whatsapp" | "telegram"
       entry_source: "manual" | "recurrence" | "import" | "whatsapp" | "telegram"
-      goal_status: "active" | "achieved" | "archived"
+      goal_status: "active" | "paused" | "achieved" | "archived"
       import_format: "csv" | "ofx"
       import_status: "pending" | "processed" | "failed" | "reverted"
       member_role: "admin" | "member"
@@ -1867,7 +2027,7 @@ export const Constants = {
       analytics_basis: ["accrual", "cash"],
       channel_kind: ["whatsapp", "telegram"],
       entry_source: ["manual", "recurrence", "import", "whatsapp", "telegram"],
-      goal_status: ["active", "achieved", "archived"],
+      goal_status: ["active", "paused", "achieved", "archived"],
       import_format: ["csv", "ofx"],
       import_status: ["pending", "processed", "failed", "reverted"],
       member_role: ["admin", "member"],

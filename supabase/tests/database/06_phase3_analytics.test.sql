@@ -196,8 +196,8 @@ select results_eq(
   $$ values (213000::bigint) $$, 'filtro de conta exclui compras no cartão');
 select results_eq(
   $$ select description, amount_cents from analytics_entries(current_setting('t.ws')::uuid, '2025-01-01', '2025-12-31', 'accrual')
-     where kind = 'expense' order by amount_cents desc limit 2 $$,
-  $$ values ('Aluguel', 200000::bigint), ('Mercado', 10000::bigint) $$, 'maiores gastos do período');
+     where kind = 'expense' order by amount_cents desc, description limit 2 $$,
+  $$ values ('Aluguel', 200000::bigint), ('Cadeira', 10000::bigint) $$, 'maiores gastos do período (empate desfeito pela descrição)');
 
 -- -----------------------------------------------------------------------------
 -- Posição: saldo, faturas (inclui pagamento parcial) e saldo projetado
