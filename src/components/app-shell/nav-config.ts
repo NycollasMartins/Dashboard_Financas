@@ -4,6 +4,7 @@ import {
   Ellipsis,
   LayoutDashboard,
   ListOrdered,
+  MessageCircle,
   Repeat,
   Settings,
   Tags,
@@ -30,6 +31,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/categorias", label: "Categorias", icon: Tags },
   { href: "/metas", label: "Metas", icon: Target },
   { href: "/planejamento", label: "Planejamento", icon: Compass },
+  { href: "/assistente", label: "Assistente", icon: MessageCircle },
   { href: "/familia", label: "Família", icon: Users },
   { href: "/configuracoes", label: "Configurações", icon: Settings },
 ];

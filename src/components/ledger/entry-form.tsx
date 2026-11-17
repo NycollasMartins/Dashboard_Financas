@@ -2,7 +2,8 @@
 
 import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { ArrowDownRight, ArrowLeftRight, ArrowUpRight, ChevronDown, CreditCard, Loader2, PiggyBank, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { ArrowDownRight, ArrowLeftRight, ArrowUpRight, ChevronDown, CreditCard, Loader2, MessageCircle, PiggyBank, Trash2 } from "lucide-react";
 import {
   deleteEntryAction,
   deleteInstallmentsAction,
@@ -221,6 +222,15 @@ function EntryForm({
         >
           <PiggyBank className="size-4" /> Guardar para meta
         </button>
+      )}
+      {!editing && (
+        <Link
+          href="/assistente"
+          onClick={onDone}
+          className="-mt-2 flex h-11 items-center justify-center gap-2 rounded-xl text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          <MessageCircle className="size-4" /> Prefere escrever? Falar com o assistente
+        </Link>
       )}
 
       <MoneyInput
