@@ -825,6 +825,7 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           full_name: string
+          hide_amounts: boolean
           id: string
           last_workspace_id: string | null
           updated_at: string
@@ -833,6 +834,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           full_name?: string
+          hide_amounts?: boolean
           id: string
           last_workspace_id?: string | null
           updated_at?: string
@@ -841,6 +843,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           full_name?: string
+          hide_amounts?: boolean
           id?: string
           last_workspace_id?: string | null
           updated_at?: string
@@ -1442,6 +1445,164 @@ export type Database = {
     }
     Functions: {
       accept_workspace_invite: { Args: { p_token: string }; Returns: string }
+      analytics_by_category: {
+        Args: {
+          p_account_id?: string
+          p_basis?: Database["public"]["Enums"]["analytics_basis"]
+          p_card_id?: string
+          p_category_id?: string
+          p_from: string
+          p_kind?: Database["public"]["Enums"]["transaction_kind"]
+          p_member_id?: string
+          p_to: string
+          p_workspace_id: string
+        }
+        Returns: {
+          category_id: string
+          entries: number
+          parent_id: string
+          planned_cents: number
+          total_cents: number
+        }[]
+      }
+      analytics_by_member: {
+        Args: {
+          p_account_id?: string
+          p_basis?: Database["public"]["Enums"]["analytics_basis"]
+          p_card_id?: string
+          p_category_id?: string
+          p_from: string
+          p_member_id?: string
+          p_to: string
+          p_workspace_id: string
+        }
+        Returns: {
+          entries: number
+          expense_cents: number
+          income_cents: number
+          member_id: string
+        }[]
+      }
+      analytics_by_source: {
+        Args: {
+          p_account_id?: string
+          p_basis?: Database["public"]["Enums"]["analytics_basis"]
+          p_card_id?: string
+          p_category_id?: string
+          p_from: string
+          p_member_id?: string
+          p_to: string
+          p_workspace_id: string
+        }
+        Returns: {
+          entries: number
+          expense_cents: number
+          income_cents: number
+          source_id: string
+          source_type: string
+        }[]
+      }
+      analytics_entries: {
+        Args: {
+          p_account_id?: string
+          p_basis?: Database["public"]["Enums"]["analytics_basis"]
+          p_card_id?: string
+          p_category_id?: string
+          p_from: string
+          p_member_id?: string
+          p_to: string
+          p_workspace_id: string
+        }
+        Returns: {
+          account_id: string
+          amount_cents: number
+          bucket_date: string
+          card_id: string
+          category_id: string
+          description: string
+          installment_number: number
+          installment_total: number
+          invoice_id: string
+          is_planned: boolean
+          kind: Database["public"]["Enums"]["transaction_kind"]
+          member_id: string
+          occurred_on: string
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          root_category_id: string
+          transaction_id: string
+        }[]
+      }
+      analytics_monthly: {
+        Args: {
+          p_account_id?: string
+          p_basis?: Database["public"]["Enums"]["analytics_basis"]
+          p_card_id?: string
+          p_category_id?: string
+          p_from: string
+          p_member_id?: string
+          p_to: string
+          p_workspace_id: string
+        }
+        Returns: {
+          expense_cents: number
+          expense_planned_cents: number
+          income_cents: number
+          income_planned_cents: number
+          month: string
+        }[]
+      }
+      analytics_position: {
+        Args: {
+          p_account_id?: string
+          p_card_id?: string
+          p_until: string
+          p_workspace_id: string
+        }
+        Returns: {
+          available_limit_cents: number
+          balance_cents: number
+          invoices_due_cents: number
+          is_projection: boolean
+          limit_cents: number
+          open_invoices_cents: number
+          planned_expense_cents: number
+          planned_income_cents: number
+          projected_balance_cents: number
+        }[]
+      }
+      analytics_totals: {
+        Args: {
+          p_account_id?: string
+          p_basis?: Database["public"]["Enums"]["analytics_basis"]
+          p_card_id?: string
+          p_category_id?: string
+          p_from: string
+          p_member_id?: string
+          p_to: string
+          p_workspace_id: string
+        }
+        Returns: {
+          entries: number
+          expense_cents: number
+          expense_planned_cents: number
+          income_cents: number
+          income_planned_cents: number
+        }[]
+      }
+      analytics_upcoming: {
+        Args: { p_days?: number; p_workspace_id: string }
+        Returns: {
+          account_id: string
+          amount_cents: number
+          card_id: string
+          category_id: string
+          description: string
+          due_on: string
+          is_overdue: boolean
+          item_type: string
+          ref_id: string
+        }[]
+      }
       apply_recurrence_to_future: {
         Args: { p_recurrence_id: string }
         Returns: number
@@ -1553,6 +1714,7 @@ export type Database = {
     }
     Enums: {
       account_type: "checking" | "savings" | "wallet" | "investment" | "other"
+      analytics_basis: "accrual" | "cash"
       channel_kind: "whatsapp" | "telegram"
       entry_source: "manual" | "recurrence" | "import" | "whatsapp" | "telegram"
       goal_status: "active" | "achieved" | "archived"
@@ -1702,6 +1864,7 @@ export const Constants = {
   public: {
     Enums: {
       account_type: ["checking", "savings", "wallet", "investment", "other"],
+      analytics_basis: ["accrual", "cash"],
       channel_kind: ["whatsapp", "telegram"],
       entry_source: ["manual", "recurrence", "import", "whatsapp", "telegram"],
       goal_status: ["active", "achieved", "archived"],
