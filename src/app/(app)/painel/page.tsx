@@ -1,191 +1,371 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
-import { ArrowDownRight, ArrowUpRight, CheckCircle2, Circle, PiggyBank, Scale, Sparkles } from "lucide-react";
-import { Money } from "@/components/money";
+import { ArrowDownRight, ArrowUpRight, LineChart, PiggyBank, Scale } from "lucide-react";
+import { CategoryBreakdown, AverageComparison, SectionEmpty } from "@/components/dashboard/categories";
+import { DashboardNavProvider, DashboardToolbar, PendingArea } from "@/components/dashboard/dashboard-nav";
+import { InsightsCard } from "@/components/dashboard/insights";
+import { KpiCard, PositionStrip, ProjectionCard } from "@/components/dashboard/kpis";
+import { CardLimits, MeterList, TopExpenses, UpcomingList } from "@/components/dashboard/lists";
+import { TrendChart } from "@/components/dashboard/trend-chart";
+import { NewEntryButton } from "@/components/ledger/new-entry-button";
 import { PageHeader } from "@/components/page-header";
+import { PrivacyToggle } from "@/components/privacy/privacy";
 import { Skeleton } from "@/components/ui/skeleton";
-import { addMonths, formatMonth, monthStart, todayISO } from "@/lib/dates";
-import { createClient } from "@/lib/supabase/server";
-import { cn } from "@/lib/utils";
+import { savingsRate } from "@/lib/analytics/delta";
+import { buildInsights } from "@/lib/analytics/insights";
+import { isCurrent, resolvePeriod, type Period } from "@/lib/analytics/period";
+import { getByMember, getBySource, getTopExpenses, type AnalyticsScope } from "@/lib/data/analytics";
+import { getLedgerLookups, type LedgerLookups } from "@/lib/data/ledger";
+import { formatMonthTitle, todayISO, type ISODate } from "@/lib/dates";
+import { BASIS_FROM_PARAM, BASIS_LABEL } from "@/lib/domain/basis";
+import { parseDashboardFilters } from "@/lib/validation/analytics";
 import { getWorkspaceContext } from "@/lib/workspaces/context";
+import { loadCategoryTree, loadMonthly, loadPosition, loadTotals, loadUpcoming } from "./load";
 
 export const metadata: Metadata = { title: "Painel" };
 
-async function getMonthTotals(workspaceId: string) {
-  const supabase = await createClient(); // chama connection() → requisição dinâmica
-  const start = monthStart(todayISO());
-  const end = addMonths(start, 1);
-  const [tx, contributions] = await Promise.all([
-    supabase
-      .from("transactions")
-      .select("kind, amount_cents")
-      .eq("workspace_id", workspaceId)
-      .gte("occurred_on", start)
-      .lt("occurred_on", end),
-    supabase
-      .from("goal_contributions")
-      .select("amount_cents")
-      .eq("workspace_id", workspaceId)
-      .gte("contributed_on", start)
-      .lt("contributed_on", end),
-  ]);
-  if (tx.error) throw tx.error;
-  if (contributions.error) throw contributions.error;
-
-  let income = 0;
-  let expense = 0;
-  for (const t of tx.data) {
-    if (t.kind === "income") income += t.amount_cents;
-    else expense += t.amount_cents;
-  }
-  const saved = contributions.data.reduce((acc, c) => acc + c.amount_cents, 0);
-  return { month: start, income, expense, balance: income - expense, saved };
-}
-
-export default function DashboardPage() {
+/*
+ * Painel (Fase 3). Layout mobile-first (docs/design-system.md → "Dashboard"):
+ *   filtros → saldo projetado → KPIs → posição → insights →
+ *   categorias | vencimentos → evolução 12 meses → média | limites →
+ *   maiores gastos | por membro | por meio de pagamento.
+ * Cada bloco tem seu <Suspense>: o topo aparece primeiro e o resto vai chegando.
+ */
+export default function DashboardPage(props: PageProps<"/painel">) {
   return (
     <Suspense fallback={<DashboardSkeleton />}>
-      <Dashboard />
+      <Dashboard searchParams={props.searchParams} />
     </Suspense>
   );
 }
 
-function DashboardSkeleton() {
+type Ctx = {
+  scope: AnalyticsScope;
+  period: Period;
+  today: ISODate;
+  lookups: LedgerLookups;
+  basisLabel: string;
+  ledgerHref: (extra?: Record<string, string>) => string;
+  household: boolean;
+};
+
+async function Dashboard({ searchParams }: { searchParams: PageProps<"/painel">["searchParams"] }) {
+  const [{ user, active }, sp] = await Promise.all([getWorkspaceContext(), searchParams]);
+  const filters = parseDashboardFilters(sp);
+  const today = todayISO();
+  const period = resolvePeriod(filters, today);
+  const basisParam = filters.visao ?? "competencia";
+  const basis = BASIS_FROM_PARAM[basisParam];
+  const lookups = await getLedgerLookups(active.id, user.id);
+  const scope: AnalyticsScope = {
+    workspaceId: active.id,
+    basis,
+    categoryId: filters.categoria,
+    memberId: filters.membro,
+    accountId: filters.conta,
+    cardId: filters.cartao,
+  };
+  // Lista de lançamentos filtrada (ela trabalha por mês: usamos o mês do período
+  // ou, para ano/intervalo, o último mês até hoje).
+  const ledgerMonth = (period.kind === "month" ? period.from : (period.to < today ? period.to : today)).slice(0, 7);
+  const ledgerHref = (extra: Record<string, string> = {}) => {
+    const q = new URLSearchParams({ mes: ledgerMonth });
+    if (filters.membro) q.set("membro", filters.membro);
+    if (filters.conta) q.set("conta", filters.conta);
+    if (filters.cartao) q.set("cartao", filters.cartao);
+    if (filters.categoria) q.set("categoria", filters.categoria);
+    for (const [k, v] of Object.entries(extra)) q.set(k, v);
+    return `/lancamentos?${q.toString()}`;
+  };
+  const ctx: Ctx = {
+    scope,
+    period,
+    today,
+    lookups,
+    basisLabel: BASIS_LABEL[basis],
+    ledgerHref,
+    household: active.kind === "household" && lookups.members.length > 1,
+  };
+  const firstName = user.fullName.split(" ")[0] || "por aqui";
+
   return (
-    <div aria-busy="true" className="grid gap-6">
-      <div className="grid gap-2">
-        <Skeleton className="h-3 w-24" />
-        <Skeleton className="h-8 w-56" />
-      </div>
+    <>
+      <PageHeader
+        eyebrow={active.kind === "personal" ? "Espaço individual" : `Família · ${active.name}`}
+        title={`Olá, ${firstName}`}
+        actions={<PrivacyToggle className="hidden lg:grid" />}
+        className="mb-4 lg:mb-6"
+      />
+      <DashboardNavProvider>
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:gap-5">
+          <DashboardToolbar
+            kind={period.kind}
+            from={period.from}
+            to={period.to}
+            label={period.label}
+            basis={basisParam}
+            categories={lookups.categories.filter((c) => !c.archived).map((c) => ({ id: c.id, name: c.name, kind: c.kind, parentId: c.parentId }))}
+            members={lookups.members.map((m) => ({ id: m.id, name: m.name }))}
+            accounts={lookups.accounts.map((a) => ({ id: a.id, name: a.name }))}
+            cards={lookups.cards.map((c) => ({ id: c.id, name: c.name }))}
+          />
+          <PendingArea>
+            <Suspense fallback={<OverviewSkeleton />}>
+              <Overview ctx={ctx} />
+            </Suspense>
+            <Suspense fallback={null}>
+              <Insights ctx={ctx} />
+            </Suspense>
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:items-start lg:gap-5">
+              <Suspense fallback={<BlockSkeleton h="h-96" />}>
+                <Categories ctx={ctx} />
+              </Suspense>
+              <Suspense fallback={<BlockSkeleton h="h-72" />}>
+                <Upcoming ctx={ctx} />
+              </Suspense>
+            </div>
+            <Suspense fallback={<BlockSkeleton h="h-80" />}>
+              <Trend ctx={ctx} />
+            </Suspense>
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2 lg:items-start lg:gap-5">
+              <Suspense fallback={<BlockSkeleton h="h-72" />}>
+                <Comparison ctx={ctx} />
+              </Suspense>
+              <CardLimits
+                cards={lookups.cards
+                  .filter((c) => !filters.cartao || c.id === filters.cartao)
+                  .map((c) => ({ id: c.id, name: c.name, color: c.color, usedCents: c.usedCents, limitCents: c.limitCents, availableCents: c.availableCents }))}
+              />
+            </div>
+            <div className={`grid grid-cols-[minmax(0,1fr)] gap-4 lg:gap-5 ${ctx.household ? "lg:grid-cols-3" : "lg:grid-cols-2"}`}>
+              <Suspense fallback={<BlockSkeleton h="h-72" />}>
+                <Top ctx={ctx} />
+              </Suspense>
+              {ctx.household && (
+                <Suspense fallback={<BlockSkeleton h="h-72" />}>
+                  <Members ctx={ctx} />
+                </Suspense>
+              )}
+              <Suspense fallback={<BlockSkeleton h="h-72" />}>
+                <Sources ctx={ctx} />
+              </Suspense>
+            </div>
+          </PendingArea>
+        </div>
+      </DashboardNavProvider>
+    </>
+  );
+}
+
+const prevLabelOf = (p: Period) =>
+  p.kind === "month" ? formatMonthTitle(p.previous.from).toLowerCase() : p.kind === "year" ? p.previous.from.slice(0, 4) : "o período anterior";
+
+const shortDate = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+
+async function Overview({ ctx }: { ctx: Ctx }) {
+  const { scope, period, today } = ctx;
+  const [cur, prev, now, end] = await Promise.all([
+    loadTotals(scope, period),
+    loadTotals(scope, period.previous),
+    loadPosition(scope, today),
+    loadPosition(scope, period.to),
+  ]);
+  const prevLabel = prevLabelOf(period);
+  const balance = cur.incomeCents - cur.expenseCents;
+  const prevBalance = prev.incomeCents - prev.expenseCents;
+  const rate = savingsRate(cur.incomeCents, cur.expenseCents);
+  const prevRate = savingsRate(prev.incomeCents, prev.expenseCents);
+  const empty = cur.entries === 0;
+
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:gap-5">
+      {empty && (
+        <SectionEmpty icon={LineChart} text={`Nenhum lançamento em ${period.label.toLowerCase()}${scope.categoryId || scope.memberId || scope.accountId || scope.cardId ? " com estes filtros" : ""}.`}>
+          <NewEntryButton label="Lançar agora" />
+        </SectionEmpty>
+      )}
+      <section aria-label="Resumo do período" className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+        <KpiCard index={0} label="Receitas" icon={ArrowUpRight} iconClass="text-income" metric="income"
+          cents={cur.incomeCents} previous={prev.incomeCents} previousLabel={prevLabel}
+          planned={cur.incomePlannedCents} plannedLabel="a receber" />
+        <KpiCard index={1} label="Despesas" icon={ArrowDownRight} iconClass="text-expense" metric="expense"
+          cents={cur.expenseCents} previous={prev.expenseCents} previousLabel={prevLabel}
+          planned={cur.expensePlannedCents} plannedLabel="previsto" />
+        <KpiCard index={2} label="Saldo do período" icon={Scale} iconClass="text-primary" metric="balance" highlight
+          cents={balance} previous={prevBalance} previousLabel={prevLabel} />
+        <KpiCard index={3} label="Taxa de economia" icon={PiggyBank} iconClass="text-savings" metric="rate"
+          rate={rate} previous={prevRate} previousLabel={prevLabel} />
+      </section>
+      <ProjectionCard
+        isProjection={end.isProjection}
+        balanceCents={end.isProjection ? now.balanceCents : end.balanceCents}
+        projectedCents={end.projectedBalanceCents}
+        plannedIncomeCents={end.plannedIncomeCents}
+        plannedExpenseCents={end.plannedExpenseCents}
+        invoicesDueCents={end.invoicesDueCents}
+        untilLabel={shortDate(period.to)}
+      />
+      <PositionStrip
+        balanceCents={now.balanceCents}
+        openInvoicesCents={now.openInvoicesCents}
+        availableLimitCents={now.availableLimitCents}
+        limitCents={now.limitCents}
+      />
+    </div>
+  );
+}
+
+async function Insights({ ctx }: { ctx: Ctx }) {
+  const { scope, period, today, lookups } = ctx;
+  const [cur, end, now, tree, upcoming] = await Promise.all([
+    loadTotals(scope, period),
+    loadPosition(scope, period.to),
+    loadPosition(scope, today),
+    loadCategoryTree(scope, period, lookups),
+    loadUpcoming(scope.workspaceId),
+  ]);
+  const overdue = upcoming.filter((u) => u.isOverdue);
+  const insights = buildInsights({
+    isCurrentPeriod: isCurrent(period, today),
+    incomeCents: cur.incomeCents,
+    expenseCents: cur.expenseCents,
+    incomePlannedCents: cur.incomePlannedCents,
+    expensePlannedCents: cur.expensePlannedCents,
+    projectedBalanceCents: end.isProjection ? end.projectedBalanceCents : null,
+    categories: tree,
+    overdueCount: overdue.length,
+    overdueCents: overdue.reduce((a, u) => a + u.amountCents, 0),
+    cardUsage: now.limitCents > 0 ? (now.limitCents - now.availableLimitCents) / now.limitCents : null,
+    ledgerHref: (id) => ctx.ledgerHref({ categoria: id, tipo: "expense" }),
+  });
+  return <InsightsCard insights={insights} />;
+}
+
+async function Categories({ ctx }: { ctx: Ctx }) {
+  const tree = await loadCategoryTree(ctx.scope, ctx.period, ctx.lookups);
+  const total = tree.reduce((a, n) => a + n.totalCents, 0);
+  return <CategoryBreakdown nodes={tree} totalCents={total} hrefFor={(id) => ctx.ledgerHref({ categoria: id, tipo: "expense" })} />;
+}
+
+async function Comparison({ ctx }: { ctx: Ctx }) {
+  const tree = await loadCategoryTree(ctx.scope, ctx.period, ctx.lookups);
+  return <AverageComparison nodes={tree} months={ctx.period.months} />;
+}
+
+async function Upcoming({ ctx }: { ctx: Ctx }) {
+  const items = await loadUpcoming(ctx.scope.workspaceId);
+  const cats = new Map(ctx.lookups.categories.map((c) => [c.id, c]));
+  const cards = new Map(ctx.lookups.cards.map((c) => [c.id, c]));
+  return (
+    <UpcomingList
+      today={ctx.today}
+      items={items.map((u) => ({
+        ...u,
+        href: u.type === "invoice" && u.cardId ? `/cartoes/${u.cardId}?fatura=${u.dueOn.slice(0, 7)}` : `/lancamentos?mes=${u.dueOn.slice(0, 7)}`,
+        category: u.categoryId ? cats.get(u.categoryId) ?? null : null,
+        cardColor: u.cardId ? cards.get(u.cardId)?.color ?? null : null,
+      }))}
+    />
+  );
+}
+
+async function Trend({ ctx }: { ctx: Ctx }) {
+  const points = await loadMonthly(ctx.scope, ctx.period.trend);
+  const selected: string[] = [];
+  for (const p of points) if (p.month <= ctx.period.to && p.month.slice(0, 7) >= ctx.period.from.slice(0, 7)) selected.push(p.month.slice(0, 7));
+  return <TrendChart points={points} selected={selected} basisLabel={ctx.basisLabel} />;
+}
+
+async function Top({ ctx }: { ctx: Ctx }) {
+  const rows = await getTopExpenses(ctx.scope, ctx.period, 5);
+  const cats = new Map(ctx.lookups.categories.map((c) => [c.id, c]));
+  return (
+    <TopExpenses
+      hrefAll={ctx.ledgerHref({ tipo: "expense" })}
+      items={rows.map((r) => ({ ...r, category: r.categoryId ? cats.get(r.categoryId) ?? null : null }))}
+    />
+  );
+}
+
+async function Members({ ctx }: { ctx: Ctx }) {
+  const rows = await getByMember(ctx.scope, ctx.period);
+  const names = new Map(ctx.lookups.members.map((m) => [m.id, m.name]));
+  return (
+    <MeterList
+      id="membros"
+      title="Gastos por membro"
+      description="Quem gastou (ou quem lançou, se não informado)."
+      icon="members"
+      emptyText="Nenhuma despesa neste período."
+      rows={rows
+        .filter((r) => r.expenseCents > 0)
+        .map((r) => ({
+          id: r.memberId ?? "none",
+          name: (r.memberId && names.get(r.memberId)) || "Ex-membro",
+          valueCents: r.expenseCents,
+          avatar: true,
+          href: r.memberId ? ctx.ledgerHref({ membro: r.memberId, tipo: "expense" }) : undefined,
+        }))}
+    />
+  );
+}
+
+async function Sources({ ctx }: { ctx: Ctx }) {
+  const rows = await getBySource(ctx.scope, ctx.period);
+  const cards = new Map(ctx.lookups.cards.map((c) => [c.id, c]));
+  const accounts = new Map(ctx.lookups.accounts.map((a) => [a.id, a]));
+  return (
+    <MeterList
+      id="meios"
+      title="Gastos por cartão e conta"
+      description="De onde saiu o dinheiro."
+      icon="sources"
+      emptyText="Nenhuma despesa neste período."
+      rows={rows
+        .filter((r) => r.expenseCents > 0)
+        .map((r) => {
+          const card = r.type === "card" && r.id ? cards.get(r.id) : undefined;
+          const acc = r.type === "account" && r.id ? accounts.get(r.id) : undefined;
+          return {
+            id: `${r.type}-${r.id}`,
+            name: card?.name ?? acc?.name ?? "Sem conta",
+            valueCents: r.expenseCents,
+            color: card?.color ?? acc?.color ?? null,
+            sub: r.type === "card" ? "cartão" : r.type === "account" ? "conta" : undefined,
+            href: card ? ctx.ledgerHref({ cartao: card.id, tipo: "expense" }) : acc ? ctx.ledgerHref({ conta: acc.id, tipo: "expense" }) : undefined,
+          };
+        })}
+    />
+  );
+}
+
+function BlockSkeleton({ h }: { h: string }) {
+  return <Skeleton className={`${h} rounded-2xl`} />;
+}
+
+function OverviewSkeleton() {
+  return (
+    <div aria-busy="true" className="grid gap-4">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
-        {Array.from({ length: 4 }, (_, i) => (
-          <Skeleton key={i} className="h-28 rounded-2xl" />
-        ))}
+        {Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-32 rounded-2xl" />)}
+      </div>
+      <Skeleton className="h-44 rounded-2xl" />
+      <div className="grid gap-2 sm:grid-cols-3 sm:gap-3">
+        {Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="h-16 rounded-2xl" />)}
       </div>
     </div>
   );
 }
 
-async function Dashboard() {
-  const { user, active, workspaces } = await getWorkspaceContext();
-  const totals = await getMonthTotals(active.id);
-  const firstName = user.fullName.split(" ")[0] || "por aqui";
-  const hasHousehold = workspaces.some((w) => w.kind === "household");
-
-  const kpis = [
-    { label: "Receitas", cents: totals.income, tone: "income" as const, icon: ArrowUpRight },
-    { label: "Despesas", cents: totals.expense, tone: "expense" as const, icon: ArrowDownRight },
-    { label: "Saldo do mês", cents: totals.balance, tone: "neutral" as const, icon: Scale },
-    { label: "Guardado", cents: totals.saved, tone: "savings" as const, icon: PiggyBank },
-  ];
-
-  const steps = [
-    { done: true, label: "Criar sua conta", href: null },
-    { done: hasHousehold, label: "Criar o espaço da família", href: "/familia" },
-    { done: false, label: "Cadastrar cartões e despesas fixas", href: null, phase: 2 },
-    { done: false, label: "Definir sua primeira meta", href: null, phase: 4 },
-    { done: false, label: "Conectar o WhatsApp", href: null, phase: 6 },
-  ];
-
+function DashboardSkeleton() {
   return (
-    <>
-      <PageHeader
-        eyebrow={formatMonth(totals.month)}
-        title={`Olá, ${firstName}`}
-        description={
-          active.kind === "personal"
-            ? "Você está no seu espaço individual."
-            : `Você está no espaço da família “${active.name}”.`
-        }
-      />
-
-      <section aria-label="Resumo do mês" className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
-        {kpis.map((k, i) => (
-          <article
-            key={k.label}
-            style={{ animationDelay: `${i * 50}ms` }}
-            className={cn(
-              "group relative overflow-hidden rounded-2xl border bg-card p-4 animate-rise sm:p-5",
-              i === 2 && "bg-[linear-gradient(140deg,color-mix(in_oklch,var(--primary)_14%,var(--card)),var(--card)_60%)]",
-            )}
-          >
-            <div className="flex items-center justify-between text-muted-foreground">
-              <span className="text-xs font-medium sm:text-sm">{k.label}</span>
-              <k.icon
-                className={cn(
-                  "size-4",
-                  k.tone === "income" && "text-income",
-                  k.tone === "expense" && "text-expense",
-                  k.tone === "savings" && "text-savings",
-                  k.tone === "neutral" && "text-primary",
-                )}
-              />
-            </div>
-            <Money
-              cents={k.cents}
-              className="mt-3 block font-heading text-xl font-semibold sm:text-2xl lg:text-[1.65rem]"
-            />
-          </article>
-        ))}
-      </section>
-
-      <div className="mt-6 grid gap-4 lg:mt-8 lg:grid-cols-[1.4fr_1fr]">
-        <section className="rounded-2xl border bg-card p-5 animate-rise [animation-delay:200ms]">
-          <div className="flex items-center gap-2">
-            <Sparkles className="size-4 text-primary" />
-            <h2 className="text-base font-semibold">Primeiros passos</h2>
-          </div>
-          <ol className="mt-4 grid gap-1">
-            {steps.map((s) => {
-              const content = (
-                <>
-                  {s.done ? (
-                    <CheckCircle2 className="size-5 shrink-0 text-income" />
-                  ) : (
-                    <Circle className="size-5 shrink-0 text-muted-foreground/50" />
-                  )}
-                  <span className={cn("flex-1 text-sm", s.done && "text-muted-foreground line-through")}>
-                    {s.label}
-                  </span>
-                  {s.phase && (
-                    <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                      Fase {s.phase}
-                    </span>
-                  )}
-                </>
-              );
-              return (
-                <li key={s.label}>
-                  {s.href && !s.done ? (
-                    <Link href={s.href} className="flex min-h-11 items-center gap-3 rounded-lg px-2 hover:bg-accent">
-                      {content}
-                    </Link>
-                  ) : (
-                    <div className="flex min-h-11 items-center gap-3 px-2">{content}</div>
-                  )}
-                </li>
-              );
-            })}
-          </ol>
-        </section>
-
-        <section className="grid content-start gap-3 rounded-2xl border bg-card p-5 animate-rise [animation-delay:250ms]">
-          <h2 className="text-base font-semibold">Em construção</h2>
-          <p className="text-sm text-muted-foreground">
-            Gráficos por categoria, evolução mensal, faturas abertas e progresso das metas chegam na Fase 3.
-          </p>
-          <div aria-hidden className="mt-2 flex h-28 items-end gap-2">
-            {[40, 65, 50, 80, 55, 90, 70].map((h, i) => (
-              <div
-                key={i}
-                style={{ height: `${h}%` }}
-                className="flex-1 rounded-t-md bg-[linear-gradient(to_top,color-mix(in_oklch,var(--primary)_10%,transparent),color-mix(in_oklch,var(--primary)_45%,transparent))]"
-              />
-            ))}
-          </div>
-        </section>
+    <div aria-busy="true" className="grid gap-4">
+      <div className="grid gap-2">
+        <Skeleton className="h-3 w-24" />
+        <Skeleton className="h-8 w-56" />
       </div>
-    </>
+      <Skeleton className="h-11 w-full rounded-xl sm:w-96" />
+      <OverviewSkeleton />
+    </div>
   );
 }

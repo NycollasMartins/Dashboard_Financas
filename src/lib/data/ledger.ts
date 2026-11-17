@@ -180,6 +180,10 @@ export async function listLedger(workspaceId: string, filters: TransactionFilter
   const wantsTx = filters.tipo !== "transfer";
   const onlyTxFilters = filters.categoria || filters.cartao || filters.membro;
 
+  const childIds = filters.categoria
+    ? ((await supabase.from("categories").select("id").eq("workspace_id", workspaceId).eq("parent_id", filters.categoria)).data ?? []).map((c) => c.id)
+    : [];
+
   const txQuery = () => {
     let q = supabase
       .from("transactions")
@@ -193,7 +197,8 @@ export async function listLedger(workspaceId: string, filters: TransactionFilter
       .order("created_at", { ascending: false })
       .limit(1000);
     if (filters.tipo === "income" || filters.tipo === "expense") q = q.eq("kind", filters.tipo);
-    if (filters.categoria) q = q.eq("category_id", filters.categoria);
+    // Categoria-pai inclui as subcategorias (o painel leva para cá).
+    if (filters.categoria) q = q.in("category_id", [filters.categoria, ...childIds]);
     if (filters.cartao) q = q.eq("card_id", filters.cartao);
     if (filters.conta) q = q.eq("account_id", filters.conta);
     if (filters.membro) q = q.or(`member_user_id.eq.${filters.membro},and(member_user_id.is.null,created_by.eq.${filters.membro})`);

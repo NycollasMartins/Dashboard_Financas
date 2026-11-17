@@ -57,6 +57,11 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  /* Séries do dashboard (validadas p/ daltonismo nos dois temas — ver design-system.md) */
+  --color-viz-income: var(--viz-income);
+  --color-viz-expense: var(--viz-expense);
+  --color-viz-balance: var(--viz-balance);
+  --color-viz-grid: var(--viz-grid);
 
   /* Sidebar (shadcn) */
   --color-sidebar: var(--sidebar);
@@ -81,6 +86,17 @@
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --animate-rise: rise 420ms var(--ease-out-expo) both;
   --animate-glow: glow 6s ease-in-out infinite alternate;
+  --animate-grow-y: grow-y 700ms var(--ease-out-expo) both;
+  --animate-grow-x: grow-x 700ms var(--ease-out-expo) both;
+
+  @keyframes grow-y {
+    from { transform: scaleY(0); }
+    to { transform: scaleY(1); }
+  }
+  @keyframes grow-x {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+  }
 
   @keyframes rise {
     from { opacity: 0; transform: translateY(8px); }
@@ -136,6 +152,11 @@
   --chart-3: oklch(0.85 0.14 80);
   --chart-4: oklch(0.74 0.16 22);
   --chart-5: oklch(0.78 0.12 235);
+
+  --viz-income: oklch(0.64 0.13 170);   /* #00a580 */
+  --viz-expense: oklch(0.6 0.17 35);    /* #d25030 */
+  --viz-balance: oklch(0.62 0.15 290);  /* #8673d9 */
+  --viz-grid: oklch(1 0 0 / 7%);
 
   --sidebar: oklch(0.175 0.013 265);
   --sidebar-foreground: oklch(0.93 0.005 265);
@@ -193,6 +214,11 @@
   --chart-4: oklch(0.6 0.19 25);
   --chart-5: oklch(0.56 0.13 240);
 
+  --viz-income: oklch(0.58 0.12 172);   /* #009172 */
+  --viz-expense: oklch(0.6 0.19 32);    /* #da452c */
+  --viz-balance: oklch(0.52 0.18 290);  /* #6b4ec7 */
+  --viz-grid: oklch(0.21 0.02 265 / 8%);
+
   --sidebar: oklch(0.99 0.002 265);
   --sidebar-foreground: oklch(0.25 0.02 265);
   --sidebar-primary: oklch(0.52 0.1 182);
@@ -247,6 +273,16 @@
 @utility px-safe {
   padding-left: max(env(safe-area-inset-left), 0px);
   padding-right: max(env(safe-area-inset-right), 0px);
+}
+
+/* Ocultar valores (ícone de olho): <Money> vira "R$ ••••" em todo o app.
+   O valor real sai da árvore de acessibilidade (display:none). */
+[data-privacy="on"] [data-money] > [data-money-value] {
+  display: none;
+}
+[data-privacy="on"] [data-money]::after {
+  content: "R$ ••••";
+  letter-spacing: 0.04em;
 }
 
 @media (prefers-reduced-motion: reduce) {
