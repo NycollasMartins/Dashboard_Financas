@@ -31,8 +31,9 @@ function done(message?: string) {
 }
 
 export async function createHouseholdAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const parsed = createHouseholdSchema.safeParse(formToObject(formData));
-  if (!parsed.success) return fail("Confira o nome.", flat(parsed.error));
+  const raw = formToObject(formData);
+  const parsed = createHouseholdSchema.safeParse(raw);
+  if (!parsed.success) return fail("Confira o nome.", flat(parsed.error), raw);
 
   await requireUser();
   const supabase = await createClient();
@@ -45,8 +46,9 @@ export async function createInviteAction(
   _prev: ActionState<{ url: string; email: string }>,
   formData: FormData,
 ): Promise<ActionState<{ url: string; email: string }>> {
-  const parsed = inviteSchema.safeParse(formToObject(formData));
-  if (!parsed.success) return fail("Confira os campos.", flat(parsed.error));
+  const raw = formToObject(formData);
+  const parsed = inviteSchema.safeParse(raw);
+  if (!parsed.success) return fail("Confira os campos.", flat(parsed.error), raw);
 
   await requireUser();
   const supabase = await createClient();
@@ -55,7 +57,7 @@ export async function createInviteAction(
     p_email: parsed.data.email,
     p_role: parsed.data.role,
   });
-  if (error || !token) return fail(dbErrorMessage(error, "Não foi possível criar o convite."));
+  if (error || !token) return fail(dbErrorMessage(error, "Não foi possível criar o convite."), undefined, raw);
 
   revalidatePath("/familia");
   // O link é mostrado UMA vez para ser compartilhado (ex.: WhatsApp). Custo zero:

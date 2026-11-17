@@ -22,22 +22,24 @@ function fieldErrors(error: z.ZodError) {
 }
 
 export async function signInAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const parsed = signInSchema.safeParse(formToObject(formData));
-  if (!parsed.success) return fail("Confira os campos destacados.", fieldErrors(parsed.error));
+  const raw = formToObject(formData);
+  const parsed = signInSchema.safeParse(raw);
+  if (!parsed.success) return fail("Confira os campos destacados.", fieldErrors(parsed.error), raw);
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({
     email: parsed.data.email,
     password: parsed.data.password,
   });
-  if (error) return fail(authErrorMessage(error));
+  if (error) return fail(authErrorMessage(error), undefined, raw);
 
   redirect(safeNextPath(parsed.data.next, SITE));
 }
 
 export async function signUpAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const parsed = signUpSchema.safeParse(formToObject(formData));
-  if (!parsed.success) return fail("Confira os campos destacados.", fieldErrors(parsed.error));
+  const raw = formToObject(formData);
+  const parsed = signUpSchema.safeParse(raw);
+  if (!parsed.success) return fail("Confira os campos destacados.", fieldErrors(parsed.error), raw);
 
   const next = safeNextPath(parsed.data.next, SITE);
   const supabase = await createClient();
@@ -50,7 +52,7 @@ export async function signUpAction(_prev: ActionState, formData: FormData): Prom
       data: { full_name: parsed.data.fullName },
     },
   });
-  if (error) return fail(authErrorMessage(error));
+  if (error) return fail(authErrorMessage(error), undefined, raw);
 
   // Por segurança o Supabase não revela se o e-mail já existe: a mensagem é neutra.
   return ok(`Enviamos um link de confirmação para ${parsed.data.email}. Abra o e-mail para ativar sua conta.`);
@@ -60,8 +62,9 @@ export async function requestPasswordResetAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const parsed = resetRequestSchema.safeParse(formToObject(formData));
-  if (!parsed.success) return fail("Confira os campos destacados.", fieldErrors(parsed.error));
+  const raw = formToObject(formData);
+  const parsed = resetRequestSchema.safeParse(raw);
+  if (!parsed.success) return fail("Confira os campos destacados.", fieldErrors(parsed.error), raw);
 
   const supabase = await createClient();
   const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {

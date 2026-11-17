@@ -7,7 +7,7 @@ import { idleState } from "@/lib/action-state";
 import { requestPasswordResetAction } from "../actions";
 import { AuthCard } from "../auth-card";
 
-export default function ForgotPasswordPage() {
+export function ForgotPasswordForm() {
   const [state, action] = useActionState(requestPasswordResetAction, idleState);
 
   return (
@@ -29,6 +29,7 @@ export default function ForgotPasswordPage() {
               name="email"
               type="email"
               autoComplete="email"
+              defaultValue={state.values?.email}
               inputMode="email"
               required
               errors={state.fieldErrors?.email}

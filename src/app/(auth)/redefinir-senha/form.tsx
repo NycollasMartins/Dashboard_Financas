@@ -10,7 +10,7 @@ import { AuthCard } from "../auth-card";
  * Chega-se aqui pelo link do e-mail (/auth/confirm cria a sessão de recuperação).
  * Sem sessão válida, a action responde com erro amigável.
  */
-export default function ResetPasswordPage() {
+export function ResetPasswordForm() {
   const [state, action] = useActionState(updatePasswordAction, idleState);
 
   return (

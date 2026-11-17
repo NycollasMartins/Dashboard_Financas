@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { ArrowDownRight, ArrowUpRight, CheckCircle2, Circle, PiggyBank, Scale, Sparkles } from "lucide-react";
 import { Money } from "@/components/money";
 import { PageHeader } from "@/components/page-header";
+import { Skeleton } from "@/components/ui/skeleton";
 import { addMonths, formatMonth, monthStart, todayISO } from "@/lib/dates";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -11,9 +13,9 @@ import { getWorkspaceContext } from "@/lib/workspaces/context";
 export const metadata: Metadata = { title: "Painel" };
 
 async function getMonthTotals(workspaceId: string) {
+  const supabase = await createClient(); // chama connection() → requisição dinâmica
   const start = monthStart(todayISO());
   const end = addMonths(start, 1);
-  const supabase = await createClient();
   const [tx, contributions] = await Promise.all([
     supabase
       .from("transactions")
@@ -41,7 +43,31 @@ async function getMonthTotals(workspaceId: string) {
   return { month: start, income, expense, balance: income - expense, saved };
 }
 
-export default async function DashboardPage() {
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<DashboardSkeleton />}>
+      <Dashboard />
+    </Suspense>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <div aria-busy="true" className="grid gap-6">
+      <div className="grid gap-2">
+        <Skeleton className="h-3 w-24" />
+        <Skeleton className="h-8 w-56" />
+      </div>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+        {Array.from({ length: 4 }, (_, i) => (
+          <Skeleton key={i} className="h-28 rounded-2xl" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+async function Dashboard() {
   const { user, active, workspaces } = await getWorkspaceContext();
   const totals = await getMonthTotals(active.id);
   const firstName = user.fullName.split(" ")[0] || "por aqui";

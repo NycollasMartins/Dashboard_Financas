@@ -30,6 +30,7 @@ export function SignUpForm() {
         label="Seu nome"
         name="fullName"
         autoComplete="name"
+        defaultValue={state.values?.fullName}
         required
         errors={state.fieldErrors?.fullName}
       />
@@ -38,6 +39,7 @@ export function SignUpForm() {
         name="email"
         type="email"
         autoComplete="email"
+        defaultValue={state.values?.email}
         inputMode="email"
         required
         errors={state.fieldErrors?.email}

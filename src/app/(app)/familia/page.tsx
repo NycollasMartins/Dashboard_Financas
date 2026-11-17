@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Crown, Home, MailPlus, Users } from "lucide-react";
 import { WorkspaceIcon } from "@/components/app-shell/workspace-switcher";
-import { initials } from "@/components/app-shell/user-menu";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { initials } from "@/lib/initials";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import { getWorkspaceContext, type WorkspaceSummary } from "@/lib/workspaces/context";
@@ -52,17 +54,26 @@ function Section({
   );
 }
 
-export default async function FamilyPage() {
-  const { user, workspaces, active } = await getWorkspaceContext();
-  const households = workspaces.filter((w) => w.kind === "household");
-
+export default function FamilyPage() {
   return (
     <>
       <PageHeader
         title="Família"
         description="Espaços familiares compartilham os mesmos dados entre os membros. Seu espaço individual continua só seu."
       />
+      <Suspense fallback={<Skeleton className="h-80 rounded-2xl" />}>
+        <FamilyContent />
+      </Suspense>
+    </>
+  );
+}
 
+async function FamilyContent() {
+  const { user, workspaces, active } = await getWorkspaceContext();
+  const households = workspaces.filter((w) => w.kind === "household");
+
+  return (
+    <>
       <div className="grid gap-4">
         {active.kind === "household" ? (
           <ActiveHousehold workspace={active} userId={user.id} />

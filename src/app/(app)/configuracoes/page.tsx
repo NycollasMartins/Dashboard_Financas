@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { KeyRound, LogOut, MessageCircle, Palette, User } from "lucide-react";
 import { signOutAction } from "@/app/(auth)/actions";
 import { PageHeader } from "@/components/page-header";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getWorkspaceContext } from "@/lib/workspaces/context";
 import { ProfileForm, ThemePicker } from "./profile-form";
 
@@ -20,14 +22,20 @@ function Block({ icon: Icon, title, children }: { icon: typeof User; title: stri
   );
 }
 
-export default async function SettingsPage() {
+async function Profile() {
   const { user } = await getWorkspaceContext();
+  return <ProfileForm fullName={user.fullName} email={user.email} />;
+}
+
+export default function SettingsPage() {
   return (
     <>
       <PageHeader title="Configurações" />
       <div className="grid gap-4 lg:grid-cols-2">
         <Block icon={User} title="Perfil">
-          <ProfileForm fullName={user.fullName} email={user.email} />
+          <Suspense fallback={<Skeleton className="h-52" />}>
+            <Profile />
+          </Suspense>
         </Block>
         <div className="grid content-start gap-4">
           <Block icon={Palette} title="Aparência">

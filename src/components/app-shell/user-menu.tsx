@@ -14,13 +14,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { initials } from "@/lib/initials";
 import { cn } from "@/lib/utils";
-
-export function initials(name: string, email: string) {
-  const source = name.trim() || email;
-  const parts = source.split(/\s+/).filter(Boolean);
-  return ((parts[0]?.[0] ?? "") + (parts.length > 1 ? parts.at(-1)![0] : "")).toUpperCase() || "?";
-}
 
 export function UserMenu({
   name,

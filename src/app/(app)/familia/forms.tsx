@@ -58,6 +58,7 @@ export function CreateHouseholdForm() {
         label="Nome da família"
         name="name"
         placeholder="Ex.: Casa Silva"
+        defaultValue={state.values?.name}
         maxLength={80}
         required
         errors={state.fieldErrors?.name}
@@ -104,6 +105,7 @@ export function InviteForm({ workspaceId }: { workspaceId: string }) {
           type="email"
           inputMode="email"
           placeholder="nome@email.com"
+          defaultValue={state.values?.email}
           required
           errors={state.fieldErrors?.email}
         />

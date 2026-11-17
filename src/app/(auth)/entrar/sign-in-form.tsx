@@ -25,6 +25,7 @@ export function SignInForm() {
         name="email"
         type="email"
         autoComplete="email"
+        defaultValue={state.values?.email}
         inputMode="email"
         required
         errors={state.fieldErrors?.email}

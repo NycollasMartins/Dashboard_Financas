@@ -7,6 +7,7 @@ import { Moon, Sun } from "lucide-react";
 import { Field, FormMessage, SubmitButton } from "@/components/forms/fields";
 import { Button } from "@/components/ui/button";
 import { idleState } from "@/lib/action-state";
+import { useMounted } from "@/lib/use-mounted";
 import { cn } from "@/lib/utils";
 import { updateProfileAction } from "../actions";
 
@@ -30,6 +31,8 @@ export function ProfileForm({ fullName, email }: { fullName: string; email: stri
 
 export function ThemePicker() {
   const { resolvedTheme, setTheme } = useTheme();
+  const mounted = useMounted();
+  const current = mounted ? resolvedTheme : undefined;
   const options = [
     { value: "dark", label: "Escuro", icon: Moon },
     { value: "light", label: "Claro", icon: Sun },
@@ -41,10 +44,10 @@ export function ThemePicker() {
           key={value}
           type="button"
           role="radio"
-          aria-checked={resolvedTheme === value}
+          aria-checked={current === value}
           variant="ghost"
           onClick={() => setTheme(value)}
-          className={cn("min-w-28", resolvedTheme === value && "bg-card shadow-sm")}
+          className={cn("min-w-28", current === value && "bg-card shadow-sm")}
         >
           <Icon /> {label}
         </Button>
