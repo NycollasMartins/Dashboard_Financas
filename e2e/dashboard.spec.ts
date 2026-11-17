@@ -105,24 +105,38 @@ test("gráfico de evolução tem tabela alternativa com 12 meses", async ({ page
   await expect(table.getByRole("row")).toHaveCount(13); // cabeçalho + 12 meses
 });
 
+/** Clica no olho e espera a Server Action gravar a preferência (POST na própria página). */
+async function togglePrivacy(page: Page, name: "Ocultar valores" | "Mostrar valores") {
+  const saved = page.waitForResponse((r) => r.request().method() === "POST" && r.url().includes("/painel"));
+  await page.getByRole("button", { name }).filter({ visible: true }).first().click();
+  await saved;
+}
+
 test("ocultar valores esconde os R$ e a preferência fica salva no perfil", async ({ page }) => {
+  // Regressão: tocar no olho antes de um bloco em streaming hidratar gerava "hydration mismatch".
+  const hydrationErrors: string[] = [];
+  page.on("console", (m) => m.type() === "error" && /Hydration failed/.test(m.text()) && hydrationErrors.push(m.text()));
   await page.goto("/painel");
   const resumo = page.getByRole("region", { name: "Resumo do período" });
-  const toggle = page.getByRole("button", { name: "Ocultar valores" }).filter({ visible: true }).first();
   const shown = resumo.getByText(/R\$\s\d/).filter({ visible: true });
   await expect(shown.first()).toBeVisible();
-  await toggle.click();
-  // O CSS troca o valor por "R$ ••••" (::after) e tira o número da tela e do leitor de tela
-  await expect(page.locator('[data-privacy="on"]')).toHaveCount(1);
-  await expect(shown).toHaveCount(0);
-  await page.waitForTimeout(500); // a action grava em segundo plano
-  await page.reload();
-  await expect(page.getByRole("button", { name: "Mostrar valores" }).filter({ visible: true }).first()).toBeVisible();
-  await expect(shown).toHaveCount(0);
-  // Volta ao normal (os outros testes leem os valores)
-  await page.getByRole("button", { name: "Mostrar valores" }).filter({ visible: true }).first().click();
+  try {
+    await togglePrivacy(page, "Ocultar valores");
+    // O CSS troca o valor por "R$ ••••" (::after) e tira o número da tela e do leitor de tela
+    await expect(page.locator('[data-privacy="on"]')).toHaveCount(1);
+    await expect(shown).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByRole("button", { name: "Mostrar valores" }).filter({ visible: true }).first()).toBeVisible();
+    await expect(shown).toHaveCount(0);
+  } finally {
+    // Sempre volta ao normal: os outros testes leem os valores.
+    await page.goto("/painel");
+    if (await page.getByRole("button", { name: "Mostrar valores" }).filter({ visible: true }).count()) {
+      await togglePrivacy(page, "Mostrar valores");
+    }
+  }
   await expect(shown.first()).toBeVisible();
-  await page.waitForTimeout(500);
+  expect(hydrationErrors, "sem erros de hidratação").toEqual([]);
 });
 
 test("mês sem lançamentos mostra estado vazio amigável", async ({ page }) => {

@@ -6,6 +6,7 @@ import { devices, test } from "@playwright/test";
  */
 const PAGES = [
   ["painel", "/painel"],
+  ["painel-caixa", `/painel?visao=caixa&ano=${new Date().getFullYear()}`],
   ["lancamentos", "/lancamentos"],
   ["cartoes", "/cartoes"],
   ["contas", "/contas"],
@@ -29,15 +30,17 @@ for (const t of TARGETS) {
       test(`${slug}`, async ({ page }) => {
         await page.goto(path);
         await page.waitForLoadState("networkidle");
-        await page.waitForTimeout(600); // animações de entrada
-        await page.screenshot({ path: `docs/images/${t.name}-${slug}.png` });
+        await page.waitForTimeout(1200); // animações de entrada (barras dos gráficos)
+        // Painel no desktop: página inteira (mostra todos os gráficos).
+        const fullPage = t.name === "desktop" && slug.startsWith("painel");
+        await page.screenshot({ path: `docs/images/${t.name}-${slug}.png`, fullPage });
       });
     }
 
     test("lancamento-rapido", async ({ page }) => {
       await page.goto("/lancamentos");
       await page.getByRole("button", { name: "Novo lançamento" }).filter({ visible: true }).first().click();
-      await page.getByLabel("Valor").pressSequentially("4590");
+      await page.getByLabel("Valor", { exact: true }).pressSequentially("4590");
       await page.getByRole("radio", { name: "Restaurantes e delivery" }).click();
       await page.waitForTimeout(500);
       await page.screenshot({ path: `docs/images/${t.name}-lancamento-rapido.png` });
