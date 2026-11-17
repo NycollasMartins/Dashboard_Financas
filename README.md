@@ -6,7 +6,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178c6?logo=typescript&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-Postgres%2017%20%2B%20RLS-3ecf8e?logo=supabase&logoColor=white)
 ![Tailwind](https://img.shields.io/badge/Tailwind-4.3-38bdf8?logo=tailwindcss&logoColor=white)
-![Status](https://img.shields.io/badge/status-Fase%202%20conclu%C3%ADda-5eead4)
+![Status](https://img.shields.io/badge/status-Fase%203%20conclu%C3%ADda-5eead4)
 ![Licença](https://img.shields.io/badge/licen%C3%A7a-todos%20os%20direitos%20reservados-lightgrey)
 
 Controle de receitas, despesas, cartões de crédito, faturas, parcelamentos e contas fixas — para uma
@@ -15,6 +15,7 @@ o celular (lançar um gasto leva 3 toques) e com **custo zero** de infraestrutur
 
 | Desktop | iPhone |
 |---|---|
+| ![Painel no desktop](docs/images/desktop-painel.png) | ![Painel no iPhone](docs/images/iphone-painel.png) |
 | ![Lançamentos no desktop](docs/images/desktop-lancamentos.png) | ![Lançamentos no iPhone](docs/images/iphone-lancamentos.png) |
 | ![Fatura no desktop](docs/images/desktop-fatura.png) | ![Lançamento rápido no iPhone](docs/images/iphone-lancamento-rapido.png) |
 
@@ -24,6 +25,7 @@ o celular (lançar um gasto leva 3 toques) e com **custo zero** de infraestrutur
 | Tela | Desktop | iPhone |
 |---|---|---|
 | Painel | ![](docs/images/desktop-painel.png) | ![](docs/images/iphone-painel.png) |
+| Painel (visão caixa, ano) | ![](docs/images/desktop-painel-caixa.png) | ![](docs/images/iphone-painel-caixa.png) |
 | Cartões | ![](docs/images/desktop-cartoes.png) | ![](docs/images/iphone-cartoes.png) |
 | Fatura | ![](docs/images/desktop-fatura.png) | ![](docs/images/iphone-fatura.png) |
 | Contas | ![](docs/images/desktop-contas.png) | ![](docs/images/iphone-contas.png) |
@@ -106,8 +108,25 @@ alternando entre eles com um toque.
 - ✅ Trilha de auditoria (quem criou/alterou/excluiu e quando).
 - ✅ Dados de demonstração realistas no ambiente local.
 
+**Painel e análises (Fase 3)**
+- ✅ **KPIs** do período (receitas, despesas, saldo, taxa de economia) com variação vs. período anterior —
+  seta, % e cor que *significa* algo: gasto subindo é ruim, receita subindo é boa.
+- ✅ **Saldo projetado para o fim do mês** = saldo de hoje + receitas previstas − despesas previstas −
+  faturas a vencer; posição atual (saldo das contas, faturas em aberto, limite disponível).
+- ✅ Duas visões: **Competência** (gasto no mês da compra) e **Caixa** (compra no cartão no mês em que a
+  fatura vence) — ver [seção 15](#15-regras-de-negócio-em-linguagem-simples).
+- ✅ **Realizado × previsto** sempre separados (recorrências previstas, parcelas futuras, faturas a vencer).
+- ✅ Gráficos: gastos por categoria/subcategoria (toque → lançamentos filtrados), evolução de 12 meses,
+  comparação com a média de 3 meses, uso do limite dos cartões; listas de próximos vencimentos (15 dias),
+  maiores gastos, gastos por membro e por cartão/conta.
+- ✅ **Insights** em texto por regras (ex.: "Você gastou 40% a mais em Restaurantes que a média dos últimos 3 meses").
+- ✅ Filtros na URL (mês, ano, intervalo, visão, categoria, membro, conta, cartão): link compartilhável e
+  botão voltar funcionando.
+- ✅ **Ocultar valores** (ícone de olho) para usar em público, salvo no perfil.
+- ✅ Acessível: cada gráfico vira tabela com um toque; Lighthouse acessibilidade 100.
+- ✅ Seed com **12 meses** de histórico (freelas, 13º, um mês atípico) e um 2º membro na família.
+
 ### 🔜 Planejado (ver [roadmap](docs/roadmap.md))
-- 🔜 **Fase 3** – Dashboard com gráficos (categoria, evolução mensal, comparação, faturas abertas) e filtros.
 - 🔜 **Fase 4** – Metas e projeções ("quanto guardar por mês", "em quanto tempo chego lá").
 - 🔜 **Fase 5** – IA que entende mensagens ("gastei 50 no Uber no crédito do Nubank").
 - 🔜 **Fase 6** – Bot no WhatsApp (API oficial) e Telegram.
@@ -245,7 +264,9 @@ erDiagram
 - **Views com `security_invoker`**: saldos e faturas respeitam a RLS de quem consulta.
 - **Operações sensíveis em funções do banco** com checagens explícitas (convites, posse, exclusão de conta).
 - **Reautenticação**: trocar e-mail e excluir a conta pedem a senha atual.
-- **Testes de isolamento**: 122 asserções pgTAP (inclui "estranho não vê nada", "membro não promove a si
+- **Agregados do painel** em funções `SECURITY INVOKER`: rodam com a sessão de quem pede, então a RLS
+  vale também para somas e médias — uma família nunca vê números de outra (testado).
+- **Testes de isolamento**: 164 asserções pgTAP (inclui "estranho não vê nada", "membro não promove a si
   mesmo", "não dá para mover lançamento de espaço").
 
 **Matriz de permissões**
@@ -289,28 +310,32 @@ segredos nelas. Arquivos que leem segredos começam com `import "server-only"`. 
 │   │   ├── (auth)/            # Telas públicas: entrar, cadastro, senha, convite
 │   │   ├── (app)/             # Telas logadas: painel, lançamentos, cartões, contas, recorrências,
 │   │   │   │                  #   categorias, família, configurações, mais
-│   │   │   └── _actions/      #   Server Actions da Fase 2
+│   │   │   ├── painel/        #   Dashboard (blocos com Suspense + load.ts com cache)
+│   │   │   └── _actions/      #   Server Actions (lançamentos, preferências)
 │   │   ├── auth/confirm/      # Destino dos links de e-mail (token_hash)
 │   │   ├── layout.tsx         # Fontes, tema, metadados PWA/iOS
 │   │   └── manifest.ts        # Manifest do PWA
 │   ├── components/
 │   │   ├── app-shell/         # Sidebar, barra inferior, seletor de espaço, menu do usuário
-│   │   ├── ledger/            # Lançamento rápido, listas, formulários, campo de valor
+│   │   ├── dashboard/         # KPIs, gráficos (HTML/SVG), filtros, insights, listas
+│   │   ├── privacy/           # Ocultar valores (ícone de olho)
+│   │   ├── ledger/            # Lançamento rápido (formulário sob demanda), listas, formulários
 │   │   ├── forms/             # Campos acessíveis e botão de envio
 │   │   └── ui/                # shadcn/ui + sheet (folha inferior)
 │   ├── lib/
-│   │   ├── domain/            # Regras puras: fatura, recorrência (+ testes)
-│   │   ├── data/              # Consultas server-only
+│   │   ├── domain/            # Regras puras: fatura, recorrência, competência × caixa (+ testes)
+│   │   ├── analytics/         # Período, variação, categorias, insights do painel (+ testes)
+│   │   ├── data/              # Consultas server-only (ledger.ts, analytics.ts)
 │   │   ├── supabase/          # Clientes (servidor/proxy), tipos gerados, retry de relógio
 │   │   ├── validation/        # Schemas Zod
 │   │   ├── money.ts, dates.ts # Centavos e datas (America/Sao_Paulo)
 │   │   └── …                  # sessão, erros, contexto do espaço
 │   └── proxy.ts               # Antigo middleware: sessão + redirecionamentos
 ├── supabase/
-│   ├── migrations/            # 0001–0006 (schema, RLS, funções, pg_cron)
+│   ├── migrations/            # 0001–0007 (schema, RLS, funções, pg_cron, analytics)
 │   ├── tests/database/        # pgTAP
 │   ├── templates/             # E-mails em pt-BR
-│   ├── seed.sql               # Usuários de teste + mês de demonstração (só local)
+│   ├── seed.sql               # Usuários de teste + 12 meses de demonstração (só local)
 │   └── config.toml            # Supabase local
 ├── CLAUDE.md                  # Contexto do projeto para o Claude Code
 └── playwright.config.ts       # Projetos: Desktop, iPhone 15, iPhone SE, Android 360x800
@@ -427,12 +452,28 @@ pnpm dev                 # http://localhost:3000
 
 | Tipo | Comando | Cobre |
 |---|---|---|
-| Unitários (Vitest) | `pnpm test` | Centavos (`parseBRL`, `formatBRL`, parcelas), datas em São Paulo (inclusive perto da meia-noite e na virada do ano), regra da fatura, recorrências, redirecionamento seguro, retry de relógio — **64 testes** |
-| Banco (pgTAP) | `pnpm test:db` | Isolamento entre usuários e famílias, papéis, convites, posse/exclusão de conta, faturas, parcelas (ano seguinte, centavos ímpares, fevereiro), recorrências idempotentes, saldos, pagamentos, limite, categorias, auditoria — **122 asserções** |
-| E2E (Playwright) | `pnpm test:e2e` | Login/validações, cadastro → confirmação → troca de e-mail → exclusão, lançamento em 3 toques, parcelado, desfazer, pagar fatura, recorrência, categoria com reatribuição; checagens iOS |
+| Unitários (Vitest) | `pnpm test` | Centavos (`parseBRL`, `formatBRL`, parcelas), datas em São Paulo (inclusive perto da meia-noite e na virada do ano), regra da fatura, recorrências, competência × caixa, período do painel, variação e cor semântica, categorias, insights, redirecionamento seguro, retry de relógio — **103 testes** |
+| Banco (pgTAP) | `pnpm test:db` | Isolamento entre usuários e famílias, papéis, convites, posse/exclusão de conta, faturas, parcelas (ano seguinte, centavos ímpares, fevereiro), recorrências idempotentes, saldos, pagamentos, limite, categorias, auditoria; painel: competência × caixa (somam igual no período fechado), mês vazio, só previstos, parcelas cruzando o ano, fatura paga parcialmente, vários membros, saldo projetado e RLS entre famílias — **164 asserções** |
+| E2E (Playwright) | `pnpm test:e2e` | Login/validações, cadastro → confirmação → troca de e-mail → exclusão, lançamento em 3 toques, parcelado, desfazer, pagar fatura, recorrência, categoria com reatribuição; painel (filtros na URL + voltar, visões, ocultar valores, tabela, vazio, clique → lista); regressão da 1ª compra parcelada; checagens iOS |
 | iOS/mobile | `pnpm test:e2e:ios` | Sem rolagem horizontal, barra inferior fixa com alvos ≥ 44 px, safe area, fonte ≥ 16 px (sem zoom do iOS), `inputmode="decimal"`, `100dvh`, meta tags PWA e `apple-touch-icon`, folha de lançamento cabe na tela |
 
 No **CI** (GitHub Actions) tudo isso roda a cada push na `main` e em cada pull request.
+
+### Desempenho (Lighthouse, celular)
+Medido em `/painel` com build de produção, logado, dados do seed (12 meses), Lighthouse 12.8, perfil móvel
+(4G lento + CPU 4× mais lenta), 3 execuções:
+
+| Modo | Desempenho | LCP | TBT | CLS | Acessibilidade | Boas práticas |
+|---|---|---|---|---|---|---|
+| Throttling real (`--throttling-method=devtools`) | **95** | **2,3 s** | 70–90 ms | 0 | — | — |
+| Simulado (padrão do Lighthouse) | 71–84 | 4,1 s | 140–630 ms | 0 | **100** | 96 |
+
+O modo simulado estima o LCP como se o texto dependesse de todo o JavaScript; no navegador o maior
+elemento é pintado em ~0,5 s (sem throttling). Otimizações feitas: agregações no banco (nada de baixar
+lançamentos para somar), streaming por bloco com `<Suspense>`, gráficos sem biblioteca, formulário de
+lançamento carregado sob demanda, primeira dobra sem animação de opacidade. Para medir de novo:
+`pnpm build && pnpm start`, copie o cookie de sessão e rode
+`npx lighthouse@12.8.2 http://localhost:3000/painel --form-factor=mobile --extra-headers=headers.json`.
 
 ## 13. Testar no iPhone
 
@@ -484,6 +525,17 @@ Passo a passo detalhado (com prints do que clicar) em [`docs/setup-manual.md`](d
 5. **Vercel (Hobby)**: importar o repositório e cadastrar `NEXT_PUBLIC_SUPABASE_URL`,
    `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` e `NEXT_PUBLIC_SITE_URL`.
 
+**Repositório privado — o que muda**
+- **GitHub Actions (CI)** funciona igual. No plano Free, repositórios privados têm **2.000 minutos/mês**
+  (públicos são ilimitados). Cada execução do CI leva ~5–7 min → cabem ~300 pushes por mês. O limite de
+  gasto padrão é **US$ 0**: se acabar, o CI só para até o mês virar — não há cobrança surpresa.
+  Pushes seguidos cancelam a execução anterior (`concurrency` no workflow), o que economiza minutos.
+- **Vercel Hobby** aceita repositório privado da sua conta pessoal do GitHub: ao importar, autorize o app
+  da Vercel a ver esse repositório. Atenção: no Hobby, com repositório privado, a Vercel **só publica
+  commits cujo autor é você** (o dono da conta). Commits de outra pessoa (ex.: se sua esposa um dia fizer um
+  commit) ficam bloqueados — isso exige o plano Pro. Os commits deste projeto usam o seu e-mail *noreply* do
+  GitHub como autor; se algum deploy aparecer como *Blocked*, veja `docs/setup-manual.md` (seção D).
+
 ## 15. Regras de negócio em linguagem simples
 
 Todas as regras numeradas estão em [`docs/requisitos.md`](docs/requisitos.md).
@@ -518,6 +570,20 @@ também mudam; o que já foi confirmado nunca muda.
 
 **Saldo da conta.** Saldo inicial + receitas recebidas − despesas pagas (fora do crédito) + transferências
 que entraram − transferências que saíram − pagamentos de fatura. Lançamentos previstos aparecem à parte.
+
+**Competência × caixa (painel).** São duas formas de olhar o **mesmo** dinheiro:
+- **Competência** (padrão): o gasto conta no mês em que você **comprou**. Parcelado em 10x? Cada parcela
+  conta no seu mês.
+- **Caixa**: a compra no cartão conta no mês em que a **fatura vence** (quando o dinheiro sai da conta). Pix,
+  débito, dinheiro e receitas contam no próprio dia nas duas visões.
+- Exemplo com o seed: o notebook de R$ 4.999,90 em 10x no Nubank (fecha dia 3, vence dia 10) foi comprado no
+  dia 14. Na competência, cada parcela de R$ 499,99 aparece no dia 14 de cada mês; na caixa, no dia 10 do mês
+  seguinte. Somando todos os meses, as duas visões dão o mesmo total.
+- **Realizado × previsto**: previsto é o que ainda não aconteceu — recorrência não confirmada, parcela de
+  mês futuro ou (na caixa) fatura ainda não quitada.
+
+**Saldo projetado.** Saldo de hoje nas contas + receitas previstas − despesas previstas (fora do cartão) −
+o que falta pagar das faturas que vencem até o fim do mês. O cartão entra só pela fatura, nunca duas vezes.
 
 **Arredondamento e dinheiro.** Tudo é guardado em **centavos inteiros**, nunca com casas decimais "quebradas"
 de computador (0,1 + 0,2 ≠ 0,3 em ponto flutuante). Datas usam sempre o horário de São Paulo.
@@ -555,12 +621,15 @@ de computador (0,1 + 0,2 ≠ 0,3 em ponto flutuante). Datas usam sempre o horár
 
 ## 18. Roadmap, limitações, custos, changelog e licença
 
-**Roadmap**: Fases 0–2 ✅ · Fase 3 (dashboard) ⏭️ · Fases 4–8 planejadas — detalhes em
+**Roadmap**: Fases 0–3 ✅ · Fase 4 (metas) ⏭️ · Fases 5–8 planejadas — detalhes em
 [`docs/roadmap.md`](docs/roadmap.md).
 
 **Limitações conhecidas**
 - Validação em iOS Simulator e iPhone físico ainda pendente (a emulação WebKit cobre o layout).
-- Painel com KPIs simples; gráficos chegam na Fase 3.
+- Progresso das metas no painel chega com as metas (Fase 4).
+- Projeção de **meses futuros** só enxerga recorrências já geradas (o banco gera até o fim do mês atual);
+  para o mês atual ela é completa. Comparação com a média de 3 meses só na visão por mês.
+- A lista de lançamentos filtra por mês da compra; aberta a partir da visão caixa, ela mostra as compras pela data da compra.
 - Sem modo offline ainda (service worker na Fase 8).
 - Trilha de auditoria sem política de retenção (Fase 8).
 - Estornos no cartão e importação de extratos: Fase 7.
@@ -569,13 +638,19 @@ de computador (0,1 + 0,2 ≠ 0,3 em ponto flutuante). Datas usam sempre o horár
 | Serviço | Limite gratuito relevante | Risco |
 |---|---|---|
 | Supabase Free | 500 MB de banco; **pausa após 7 dias sem uso** | Reativar no painel |
-| Vercel Hobby | Uso pessoal/não comercial | — |
+| Vercel Hobby | Uso pessoal/não comercial; repositório privado só publica commits do dono | Pro (US$ 20/mês) só se outra pessoa for commitar |
+| GitHub Actions (repo privado) | 2.000 min/mês no Free; limite de gasto padrão US$ 0 | CI para até o mês virar (sem cobrança) |
 | Brevo | ~300 e-mails/dia | Mais que suficiente |
 | Domínio próprio | Não é necessário | Opcional (~R$ 40/ano) |
 | WhatsApp (Fase 6) | Respostas a mensagens do usuário são gratuitas | Número dedicado pode ter custo de linha |
 | IA (Fase 5) | Gemini/Groq com cotas gratuitas que mudam com frequência | Monitorar limites |
 
 **Changelog resumido**
+- **Fase 3** — painel com KPIs e variação semântica, saldo projetado, visões competência × caixa,
+  realizado × previsto, gráficos (categorias, 12 meses, média, limites), vencimentos, maiores gastos, por
+  membro e por meio; insights por regra; filtros na URL; ocultar valores; tabela alternativa; camada
+  analítica no banco com índices medidos; seed de 12 meses; correções: 1ª compra parcelada num cartão novo
+  e estouro de largura em /contas no iPhone SE.
 - **Fase 2** — lançamento rápido em 3 toques; lançamentos com filtros e desfazer; cartões, faturas
   calculadas e pagamento; parcelamento com escopo; recorrências com pg_cron; transferências; contas com
   saldo calculado; categorias e subcategorias; auditoria; seed de demonstração; E2E da Fase 2.
@@ -584,6 +659,6 @@ de computador (0,1 + 0,2 ≠ 0,3 em ponto flutuante). Datas usam sempre o horár
 - **Fase 1** — Next.js 16 + Supabase, RLS multi-tenant, autenticação, família e convites, design system.
 - **Fase 0** — Requisitos, arquitetura, modelo de dados, ADRs, design system, roadmap.
 
-**Licença.** *Todos os direitos reservados* (projeto pessoal; o código está público para consulta).
+**Licença.** *Todos os direitos reservados* (projeto pessoal, repositório privado).
 Sem arquivo `LICENSE`, ninguém pode reutilizar o código sem permissão. Se um dia quiser abrir de verdade,
 a sugestão é **MIT** — basta adicionar o arquivo `LICENSE`.

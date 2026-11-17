@@ -70,12 +70,19 @@ Legenda de fase: **F1** = Fundação (feito), **F2…F8** = fases futuras.
 | RF-29e | Recorrências semanais, mensais e anuais; previstas ou confirmadas; editar "daqui pra frente". |
 | RF-29f | Parcelas: editar/excluir "só esta", "esta e as próximas" ou "todas". |
 
-### 3.3 Dashboard (F3)
+### 3.3 Dashboard (F3 ✅)
 | ID | Requisito |
 |---|---|
-| RF-30 | Visão do mês: receitas, despesas, saldo, quanto foi guardado, faturas abertas. |
-| RF-31 | Gráficos: gastos por categoria, evolução mensal, comparação com meses anteriores, progresso das metas. |
-| RF-32 | Filtros: período, categoria, membro da família, cartão. |
+| RF-30 | KPIs do período: receitas, despesas, saldo, taxa de economia, com variação vs. período anterior (seta, % e cor semântica). |
+| RF-30a | Posição: saldo atual das contas, faturas em aberto, limite disponível dos cartões. |
+| RF-30b | **Saldo projetado** para o fim do período (saldo atual + receitas previstas − despesas previstas − faturas a vencer). |
+| RF-31 | Gráficos: gastos por categoria/subcategoria (clique → lançamentos filtrados), evolução de 12 meses, comparação com a média de 3 meses, uso do limite dos cartões. |
+| RF-31a | Listas: próximos vencimentos (15 dias + vencidos), maiores gastos, gastos por membro, gastos por cartão/conta. |
+| RF-31b | Insights em texto calculados por regras (sem IA). |
+| RF-32 | Filtros globais na URL: período (mês, ano, intervalo), visão (competência/caixa), categoria, membro, conta, cartão. Link compartilhável e botão voltar. |
+| RF-33 | Ocultar valores (ícone de olho), salvo no perfil. |
+| RF-34 | Cada gráfico tem tabela alternativa; estados vazios e skeletons. |
+| RF-35 | Progresso das metas no painel → **Fase 4**. |
 
 ### 3.4 Metas e projeções (F4)
 | ID | Requisito |
@@ -206,6 +213,33 @@ Legenda de fase: **F1** = Fundação (feito), **F2…F8** = fases futuras.
 - **RN-58** Exclusão de lançamento pode ser desfeita por até 24 h (por quem excluiu ou admin), mantendo o
   autor original.
 
+### Dashboard e análises (Fase 3) — ver ADR-0014 e ADR-0015
+- **RN-60** Duas visões de período. **Competência** (padrão): cada lançamento conta na sua data (compra,
+  parcela, recebimento). **Caixa**: compra no cartão conta no **vencimento da fatura**; o resto, na data em
+  que sai/entra na conta. Num período que contém todas as datas, as duas visões somam o mesmo.
+- **RN-61** Período = mês (padrão: atual), ano ou intervalo de até 36 meses. O "anterior" tem o mesmo
+  tamanho (mês → mês anterior; ano → ano anterior; intervalo → intervalo imediatamente antes).
+- **RN-62** **Realizado × previsto**. Competência: previsto = não confirmado **ou** data futura (parcelas
+  futuras). Caixa: compra no cartão é prevista até a fatura estar **quitada** (pagamento parcial não basta);
+  o resto segue a regra da competência.
+- **RN-63** Cor da variação: gasto subindo = ruim; receita, saldo e taxa de economia subindo = bom.
+  Variação < 0,5% = estável. Sempre com seta e texto, nunca só cor.
+- **RN-64** Taxa de economia = (receitas − despesas) ÷ receitas, só com o realizado; sem receita = "—".
+- **RN-65** Saldo projetado (período que inclui hoje ou futuro) = saldo atual das contas + receitas
+  previstas − despesas previstas fora do cartão − saldo das faturas não quitadas que vencem até o fim do
+  período (inclui vencidas). Compras no cartão entram **só** pela fatura. Período passado = saldo realizado
+  no último dia. Limitação: para meses futuros, só entram as recorrências já geradas (até o fim do mês atual).
+- **RN-65a** Comparação com a média de 3 meses (gráfico e insights de categoria) só na visão **por mês**;
+  em ano/intervalo a comparação é com o período anterior de mesmo tamanho.
+- **RN-66** Insights (máx. 4, alertas primeiro): contas vencidas; projeção negativa; despesas > receitas;
+  limite ≥ 80%; categoria ≥ 20% **e** ≥ R$ 50 acima da média mensal dos 3 meses anteriores (até 2);
+  receitas/despesas previstas restantes; economia ≥ 20%; categoria ≥ 20% abaixo da média (só período fechado).
+- **RN-67** "Ocultar valores" troca todos os valores por "R$ ••••" (inclusive leitor de tela, eixos e
+  tooltips) e vale em qualquer aparelho (perfil).
+- **RN-68** Membro efetivo de um gasto = "quem gastou" ou, se vazio, quem lançou. Filtro de categoria-pai
+  inclui as subcategorias. Filtro de conta exclui compras no cartão; filtro de cartão inclui só aquele cartão.
+- **RN-69** Agregados respeitam a RLS: uma família nunca vê números de outra (funções `SECURITY INVOKER`).
+
 ## 6. Fluxo de lançamento em 3 toques (F2 ✅)
 1. **Toque 1**: botão **+** (sempre visível na barra inferior).
 2. Teclado numérico abre já focado no valor; a pessoa digita o valor (digitar não conta como toque).
@@ -234,6 +268,20 @@ Exceções: logado com outro e-mail (oferece trocar de conta), convite expirado/
 - Parâmetro `next` malicioso (`//evil.com`, `https://…`) → ignorado (redirecionamento seguro).
 - Dois cliques em "aceitar" → o segundo recebe "convite já usado" (lock `FOR UPDATE`).
 - Primeira consulta logo após login falhando com "JWT issued at future" (relógio do PostgREST) → repetida automaticamente após 1 s.
+- (Fase 3) 1ª compra **parcelada** num cartão sem fatura no ciclo falhava (`first_invoice_month` nulo) →
+  corrigido na migration 0007, com teste de banco e E2E de regressão.
+- (Fase 3) Saldos com muitos dígitos alargavam /contas no iPhone SE → grids com `minmax(0,1fr)`.
+
+## 9a. Critérios de aceite da Fase 3 (verificados)
+- [x] Totais por competência e por caixa batem no acumulado de um período fechado (pgTAP).
+- [x] Mês vazio, só previstos, parcelas cruzando o ano, fatura paga parcialmente e família com vários
+      membros testados no banco (42 asserções) e nas regras puras (Vitest).
+- [x] Uma família não vê agregados de outra; anônimo não executa as funções.
+- [x] Filtros na URL: link compartilhável reabre igual; botão voltar desfaz o último filtro (E2E).
+- [x] Clique na categoria abre os lançamentos filtrados (inclui subcategorias).
+- [x] Ocultar valores persiste após recarregar; gráficos têm tabela alternativa.
+- [x] Sem rolagem horizontal no painel (mês, ano, caixa) no iPhone 15, iPhone SE e Android.
+- [x] Lighthouse mobile: acessibilidade 100; desempenho 95 com throttling real (ver README §Desempenho).
 
 ## 9. Critérios de aceite da Fase 2 (verificados)
 - [x] Lançar despesa em 3 toques (teste E2E conta os toques) no desktop, iPhone 15, iPhone SE e Android.

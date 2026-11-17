@@ -18,3 +18,5 @@ Uma ADR aceita não é editada; se a decisão mudar, crie outra que a substitua.
 | [0011](0011-recorrencias-pg-cron.md) | Recorrências no banco com pg_cron, idempotentes | Aceita |
 | [0012](0012-testes-mobile-ios.md) | Testes mobile/iOS com Playwright WebKit e XcodeBuildMCP | Aceita |
 | [0013](0013-ciclo-de-vida-da-conta.md) | Troca de e-mail, transferência de posse e exclusão de conta | Aceita |
+| [0014](0014-visoes-competencia-e-caixa.md) | Visões de período: competência (padrão) e caixa/por vencimento | Aceita |
+| [0015](0015-camada-analitica-e-graficos.md) | Camada analítica no banco (SECURITY INVOKER) e gráficos sem biblioteca | Aceita |

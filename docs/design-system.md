@@ -29,6 +29,14 @@ Use sempre o **token** (`bg-card`, `text-income`), nunca hex soltos.
 | `warning` | âmbar | âmbar escuro | Avisos, dono da família |
 | `destructive` | vermelho | vermelho | Excluir, erros |
 | `chart-1…5` | menta, violeta, âmbar, coral, céu | versões escuras | Séries de gráficos (nesta ordem) |
+| `viz-income` | `oklch(0.64 0.13 170)` #00a580 | `oklch(0.58 0.12 172)` #009172 | Série "Receitas" nos gráficos |
+| `viz-expense` | `oklch(0.6 0.17 35)` #d25030 | `oklch(0.6 0.19 32)` #da452c | Série "Despesas" e barras de gasto |
+| `viz-balance` | `oklch(0.62 0.15 290)` #8673d9 | `oklch(0.52 0.18 290)` #6b4ec7 | Linha do saldo |
+| `viz-grid` | branco 7% | grafite 8% | Linhas de grade (sólidas, finas) |
+
+> As cores `viz-*` são **mais escuras** que `income`/`expense` de propósito: barras grandes precisam ficar
+> na faixa de luminosidade em que daltônicos (protan/deutan) ainda distinguem verde × coral. Validadas com
+> script (ΔE ≥ 9,9 sob simulação; contraste ≥ 3:1 com o cartão) nos dois temas. Texto nunca usa `viz-*`.
 
 Variantes `*-muted` (ex.: `bg-income-muted`) = a cor a 10–16% de opacidade, para fundos de badges e ícones.
 
@@ -96,3 +104,38 @@ as colunas alinharem.
 - Barras fixas sobre conteúdo (barra inferior) são **sólidas**; translucidez fica para o topo.
 - Ações secundárias de linhas de lista vão para uma **segunda linha** no celular.
 - Meses: "Dezembro de 2026" (só a 1ª maiúscula) — nunca `text-transform: capitalize`, que gera "De".
+
+## Dashboard (Fase 3)
+**Hierarquia (de cima para baixo, igual no celular e no desktop):**
+1. **Filtros** numa linha só, acima de tudo que eles afetam: período (◀ mês ▶, toque abre mês/ano/intervalo),
+   visão **Competência | Caixa**, botão de filtros (categoria, membro, conta, cartão) → chips removíveis.
+2. **KPIs** (2×2 no celular, 4 colunas no desktop): Receitas, Despesas, Saldo do período, Taxa de economia.
+   Cada um com selo de variação: seta + % + cor semântica (gasto subindo = coral; receita subindo = verde);
+   taxa usa **p.p.**; previsto aparece em texto pequeno ("+ R$ 480 a receber").
+3. **Saldo projetado** (cartão-herói): número grande + a conta que leva até ele (saldo hoje, + receitas
+   previstas, − despesas previstas, − faturas a vencer).
+4. **Posição**: saldo das contas, faturas em aberto, limite disponível (atalhos para as telas).
+5. **O que chama atenção**: até 4 insights por regra (ícone + texto; alertas primeiro).
+6. **Categorias** (barra segmentada até 5 + "Outras", lista ranqueada com 6 visíveis e "Mostrar mais") |
+   **Próximos vencimentos** (chip de data; vencida = vermelho com ícone e texto).
+7. **Evolução em 12 meses** (largura total).
+8. **Comparação com a média** (barra = período, traço = média) | **Uso do limite** (medidor; ≥ 80% âmbar + ícone).
+9. **Maiores gastos** | **Por membro** (só família com 2+ pessoas) | **Por cartão e conta**.
+
+**Regras de gráfico** (seguimos o guia de dataviz):
+- Um eixo só (nada de eixo Y duplo). Saldo e barras dividem a mesma escala em R$.
+- Forma antes da cor: parte-do-todo com ≤ 6 partes = barra segmentada (não pizza/rosca); ranking = barras
+  horizontais de **uma cor só**; uma razão contra um limite = medidor.
+- A cor segue a entidade (categoria tem cor própria), nunca a posição no ranking. 7ª categoria em diante vira "Outras".
+- Marcas finas, pontas arredondadas de 4 px, 2 px de espaço entre barras/segmentos, grade sólida e discreta.
+- Legenda sempre que houver 2+ séries; rótulos diretos só onde ajudam.
+- **Tooltip nunca é o único caminho**: todo gráfico tem o botão **Tabela**, e cada coluna do gráfico de
+  evolução é um botão com nome acessível ("Novembro de 2026: receitas …").
+- Área de toque = a coluna inteira (≥ 24 px), não o ponto.
+- Animação: barras crescem (700 ms, *ease-out-expo*); **a primeira dobra não faz fade de opacidade**
+  (elemento invisível atrasa o LCP). `prefers-reduced-motion` desliga tudo.
+- Ao trocar filtro, o conteúdo anterior fica a 60% de opacidade até o novo chegar (sem piscar skeleton).
+- "Ocultar valores": todo `<Money>` vira "R$ ••••"; eixos somem; tooltips e insights usam texto sem número.
+
+**Estados**: skeleton por bloco (mesma forma do conteúdo, sem pulo); vazio com ícone + frase + ação
+("Lançar agora"); "Ainda não há 3 meses de histórico para comparar".

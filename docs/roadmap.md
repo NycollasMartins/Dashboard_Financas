@@ -5,8 +5,8 @@
 | 0 | Planejamento: requisitos, arquitetura, modelo de dados, RLS, design system | ✅ Concluída |
 | 1 | Fundação: projeto, Supabase, migrations + RLS, auth, família/convites, alternância de espaço, layout | ✅ Concluída |
 | 2 | Receitas, despesas, categorias, contas, cartões, faturas, parcelamento, recorrências | ✅ Concluída |
-| 3 | Dashboard e gráficos | ⏭️ Próxima |
-| 4 | Metas e projeções | Planejada |
+| 3 | Dashboard e gráficos | ✅ Concluída |
+| 4 | Metas e projeções | ⏭️ Próxima |
 | 5 | IA de interpretação de mensagens | Planejada |
 | 6 | WhatsApp (Cloud API) + Telegram | Planejada |
 | 7 | Importação CSV/OFX e leitura de prints | Planejada |
@@ -19,6 +19,8 @@
 - **Fase 1+**: troca de e-mail, exclusão de conta, transferência de posse (ADR-0013); ambiente de testes
   iPhone/Android com Playwright WebKit, CI no GitHub Actions, `pnpm dev:lan`, ícones e manifest PWA (ADR-0012).
 - **Fase 2+**: transferências, auditoria com desfazer (ADR-0009), subcategorias, recorrências semanais/anuais.
+- **Fase 3+**: saldo projetado, insights por regra, ocultar valores, tabela alternativa em todo gráfico,
+  formulário de lançamento carregado sob demanda (desempenho), correção da 1ª compra parcelada.
 
 ## Fase 2 · Lançamentos e cartões ✅
 - **Back-end:** funções puras e testadas `invoiceFor(purchaseDate, card)` (RN-10) e geração de parcelas
@@ -29,15 +31,17 @@
 - **Aceite:** compra no dia do fechamento cai na fatura seguinte; 3x de R$ 100 = 33,34/33,33/33,33;
   recorrência rodada duas vezes no mesmo mês não duplica; membro não edita lançamento alheio.
 
-## Fase 3 · Dashboard (próxima)
-- Incluir alternância "por competência" (padrão) × "por fatura/caixa" nos gráficos (ADR-0010).
-- Pendente herdado: retenção do `audit_log` (Fase 8).
-- Views/RPCs agregadas por mês e categoria (com índices), sempre filtradas pela RLS.
-- KPIs reais (receitas, despesas, saldo, guardado, faturas abertas), gráficos (categoria, evolução,
-  comparação mês a mês, metas) com Recharts, filtros (período, categoria, membro, cartão) na URL.
-- **Aceite:** totais batem com a soma dos lançamentos em testes; filtros compartilháveis por link.
+## Fase 3 · Dashboard ✅
+- **Back-end:** funções `analytics_*` (`SECURITY INVOKER`) com visões competência × caixa (ADR-0014),
+  realizado × previsto, saldo projetado, vencimentos; índices medidos com `EXPLAIN ANALYZE` (ADR-0015).
+- **Front-end:** painel com KPIs e variação semântica, saldo projetado, posição, insights, categorias,
+  evolução de 12 meses, comparação com a média, limites, vencimentos, maiores gastos, por membro e por
+  cartão/conta; filtros na URL; ocultar valores; tabela alternativa; estados vazios e skeletons.
+- **Aceite (verificado):** as duas visões batem no acumulado; RLS entre famílias; filtros compartilháveis e
+  botão voltar; Lighthouse mobile acessibilidade 100.
+- **Pendências herdadas:** retenção do `audit_log` (Fase 8); progresso das metas no painel (Fase 4).
 
-## Fase 4 · Metas e projeções
+## Fase 4 · Metas e projeções (próxima)
 - Módulo puro `projections.ts` (RN-20…23) com testes de tabela; CRUD de metas e aportes (inclui resgate).
 - Tela da meta: progresso, valor mensal necessário, prazo estimado, simulador "e se eu guardar X?".
 - **Aceite:** aportes de 100/200/300 recalculam prazo e valor mensal corretamente.

@@ -40,14 +40,14 @@ pnpm dev               # http://localhost:3000
 
 ---
 
-## B. Criar o repositório no GitHub (privado)
+## B. Repositório no GitHub (privado)
 
-1. Crie um repositório **privado** em <https://github.com/new> (sem README, sem .gitignore).
-2. No terminal, na pasta do projeto:
-   ```bash
-   git remote add origin git@github.com:SEU_USUARIO/SEU_REPO.git
-   git push -u origin main
-   ```
+O repositório já existe (`origin`). Para torná-lo privado: GitHub → *Settings → General → Danger Zone →
+Change visibility → Make private*.
+- **CI (GitHub Actions)** continua funcionando: 2.000 minutos/mês grátis em repositórios privados
+  (cada execução leva ~5–7 min). Limite de gasto padrão US$ 0 → sem cobrança; se acabar, o CI espera o mês virar.
+  Acompanhe em *Settings → Billing and plans → Usage* (ou no seu perfil → *Billing*).
+- O selo "CI" do README continua aparecendo para quem tem acesso ao repositório.
 
 ---
 
@@ -88,6 +88,14 @@ pnpm dev               # http://localhost:3000
 ## D. Deploy na Vercel (Hobby, gratuito)
 
 1. <https://vercel.com/new> → importe o repositório do GitHub (framework detectado: Next.js).
+   Como o repositório é **privado**, clique em *Adjust GitHub App Permissions* e libere o acesso a ele.
+   No plano Hobby, a Vercel só publica commits **cujo autor é o dono da conta** (você). Se um deploy
+   aparecer como *Blocked* ("commit author does not have contributing access"):
+   - confira em GitHub → *Settings → Emails* que o e-mail dos commits (o *noreply*) é da sua conta e que
+     a conta da Vercel está ligada a esse mesmo GitHub (*Vercel → Account Settings → Authentication*);
+   - faça *Redeploy* pelo painel da Vercel;
+   - se continuar bloqueando, me avise antes de qualquer upgrade (o Pro custa US$ 20/mês) — alternativas
+     gratuitas: voltar o repositório a público ou publicar pela Vercel CLI a partir do seu computador.
 2. Em **Environment Variables**, cadastre:
 
 | Nome | Valor |

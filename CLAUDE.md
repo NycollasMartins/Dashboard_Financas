@@ -8,7 +8,8 @@ mensagem (WhatsApp/Telegram + IA). **Custo zero** é requisito: avise antes de q
 O usuário é dev júnior: explique decisões e liste passos manuais. Textos de UI e docs em **pt-BR**.
 Uso principal no **iPhone** → todo trabalho de UI é validado em iPhone 15, iPhone SE e Android 360×800.
 
-Repositório: https://github.com/NycollasMartins/Dashboard_Financas (público, por escolha do dono).
+Repositório: https://github.com/NycollasMartins/Dashboard_Financas (**privado**). CI: 2.000 min/mês no Free.
+Vercel Hobby com repo privado só publica commits cujo autor é o dono (ver `docs/setup-manual.md` §D).
 
 ## Stack
 Next.js 16.4 (App Router, Turbopack, **Cache Components + Partial Prefetching**) · React 19.3 · TypeScript 5.9 ·
@@ -24,7 +25,10 @@ Supabase (Postgres 17, Auth, RLS, **pg_cron**) · Zod 4 · Vitest 5 · pgTAP · 
   despesa** (`invoice_payments`); transferência (`transfers`) não é receita nem despesa.
 - **Nada derivado é armazenado**: status de fatura, saldos e limite vêm das views `card_invoice_summaries`,
   `account_balances`, `credit_card_summaries` (`security_invoker`).
-- Regras de data (fatura, parcelas, recorrência) existem **em SQL e em TS** (`src/lib/domain`) com os
+- **Painel (Fase 3)**: agregação no banco em `public.analytics_*` (`SECURITY INVOKER` → RLS vale nas somas).
+  Visões **competência** (padrão) × **caixa** (crédito no vencimento da fatura) — ADR-0014/0015.
+  Realizado × previsto sempre separados. Saldo projetado em `analytics_position`.
+- Regras de data (fatura, parcelas, recorrência, competência×caixa) existem **em SQL e em TS** (`src/lib/domain`) com os
   **mesmos casos de teste** — mudou um, mude o outro.
 - Recorrências: geradas por trigger na criação + pg_cron diário (`gerar-recorrencias`, 03:00 BRT), idempotentes.
 - Auditoria (`audit_log`) em vez de soft delete; "desfazer" via `restore_deleted_transaction`.
@@ -35,16 +39,20 @@ Supabase (Postgres 17, Auth, RLS, **pg_cron**) · Zod 4 · Vitest 5 · pgTAP · 
 ```
 src/app/(auth)/            entrar, cadastro, recuperar/redefinir senha, convite/[token]
 src/app/(app)/             painel, lancamentos, cartoes(/[id]), contas, recorrencias, categorias, familia, configuracoes, mais
-src/app/(app)/_actions/    server actions da Fase 2 (ledger.ts)
-src/components/ledger/     entry-sheet (lançamento rápido), listas, formulários, money-input, category-icon
+src/app/(app)/painel/      dashboard: blocos async com <Suspense>; load.ts deduplica RPCs com cache()
+src/app/(app)/_actions/    server actions (ledger.ts, preferences.ts)
+src/components/dashboard/  KPIs, gráficos HTML/SVG (sem lib), toolbar de filtros (router.push), insights
+src/components/privacy/    PrivacyProvider + PrivacyToggle (ocultar valores)
+src/components/ledger/     entry-sheet (provider leve) + entry-form (carregado sob demanda), listas, formulários
 src/components/ui/         shadcn + sheet.tsx (folha inferior no celular)
-src/lib/domain/            regras puras (invoice.ts, recurrence.ts) + testes
-src/lib/data/ledger.ts     consultas server-only da Fase 2
-supabase/migrations/       0001 núcleo · 0002 financeiro · 0003 canais · 0004 membros · 0005 conta · 0006 Fase 2
-supabase/tests/database/   pgTAP (122 asserções)   ·   supabase/seed.sql: usuários + mês de demonstração
+src/lib/domain/            regras puras (invoice.ts, recurrence.ts, basis.ts) + testes
+src/lib/analytics/         período, variação/tom, categorias, insights (puros, testados)
+src/lib/data/              consultas server-only (ledger.ts, analytics.ts)
+supabase/migrations/       0001 núcleo · 0002 financeiro · 0003 canais · 0004 membros · 0005 conta · 0006 Fase 2 · 0007 analytics
+supabase/tests/database/   pgTAP (164 asserções)   ·   supabase/seed.sql: ana/bruno/caio + 12 meses de demonstração
 e2e/                       Playwright: auth, conta, lançamentos, checagens iOS, screenshots do README
 scripts/                   dev-lan.mjs (celular no Wi-Fi), generate-icons.mjs (ícones PWA)
-docs/                      requisitos, modelo-de-dados, adr/ (0001–0013), design-system, roadmap, setup-manual, images/
+docs/                      requisitos, modelo-de-dados, adr/ (0001–0015), design-system, roadmap, setup-manual, images/
 ```
 
 ## Convenções obrigatórias
@@ -59,6 +67,10 @@ docs/                      requisitos, modelo-de-dados, adr/ (0001–0013), desi
 - Folhas (`Sheet`) com formulário longo: `scroll={false}` + rodapé fixo fora da área rolável (botão sempre tocável).
 - UI: só tokens do design system; alvos de toque ≥ 44 px; inputs com fonte ≥ 16 px; `inputMode="decimal"` em valores.
 - Não chamar funções de arquivo `"use client"` em Server Components; helpers compartilhados vão em `src/lib`.
+- Valores na tela: sempre `<Money>` (ou `data-money` + `data-money-value`) para o "ocultar valores" funcionar.
+- Gráficos: cores `viz-*` (validadas p/ daltonismo), um eixo só, tabela alternativa (`ChartFrame`), sem
+  biblioteca de gráficos; primeira dobra sem fade de opacidade (LCP). Regras em `docs/design-system.md`.
+- Filtros de tela que precisam do botão voltar: `router.push` (não `replace`).
 - SVG repetido na página: **sem ids** (`<defs>`/gradientes quebram quando uma cópia está oculta).
 - Segredos só em `.env.local`/Vercel; arquivo que lê segredo começa com `import "server-only"`.
 - Commits pequenos, **Conventional Commits em pt-BR** (`feat(escopo): …`); push ao fim de cada etapa com
@@ -86,7 +98,8 @@ docs/                      requisitos, modelo-de-dados, adr/ (0001–0013), desi
 - [x] **Fase 1** — Fundação + troca de e-mail, exclusão de conta, transferência de posse
 - [x] **Fase 2** — Lançamentos (3 toques), categorias/subcategorias, contas, transferências, cartões, faturas
       calculadas, pagamento de fatura, parcelamento com escopo, recorrências (pg_cron), auditoria/desfazer
-- [ ] Fase 3 — Dashboard e gráficos (incluir visão "por competência" × "por fatura")
+- [x] **Fase 3** — Dashboard: KPIs + variação, saldo projetado, competência × caixa, realizado × previsto,
+      gráficos, insights por regra, filtros na URL, ocultar valores, Lighthouse a11y 100 / perf 95 (throttling real)
 - [ ] Fase 4 — Metas e projeções
 - [ ] Fase 5 — IA (Gemini + Groq atrás de `AiParser`)
 - [ ] Fase 6 — WhatsApp Cloud API + Telegram (adapters)
@@ -95,5 +108,7 @@ docs/                      requisitos, modelo-de-dados, adr/ (0001–0013), desi
 
 ## Pendências conhecidas
 - iOS Simulator/iPhone físico ainda não validados (emulação WebKit cobre layout; ver ADR-0012).
-- Painel ainda mostra KPIs simples; gráficos na Fase 3.
+- Progresso das metas no painel: Fase 4.
+- Projeção de meses futuros ignora recorrências ainda não geradas (horizonte = fim do mês atual).
+- Lighthouse "simulado" dá LCP ~4 s (modelo pessimista); com throttling real 2,3 s.
 - `audit_log` sem retenção (Fase 8).

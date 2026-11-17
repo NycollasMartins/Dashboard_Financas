@@ -207,6 +207,32 @@ erDiagram
 | `delete_category(id, destino)` | Exclui reatribuindo lançamentos (RN-19). |
 | `restore_deleted_transaction(id)` | Desfazer exclusão a partir da auditoria (RN-58). |
 
+### Fase 3 — camada analítica (migration 0007)
+Nada novo é **armazenado** (só a preferência `profiles.hide_amounts`). Todo número do painel é calculado
+por funções SQL **`SECURITY INVOKER`**: rodam com a sessão de quem chama, então a RLS das tabelas vale
+dentro delas (uma família nunca soma lançamentos de outra). Todas recebem `p_workspace_id` e os filtros
+opcionais `p_category_id` (inclui subcategorias), `p_member_id`, `p_account_id`, `p_card_id`.
+
+| Função | Devolve |
+|---|---|
+| `analytics_entries(ws, de, até, visão, …)` | Base: lançamentos do período com `bucket_date` (data na visão escolhida), `is_planned`, membro efetivo e categoria-raiz. |
+| `analytics_totals(…)` | Receitas e despesas, realizado e previsto separados, nº de lançamentos. |
+| `analytics_monthly(…)` | Série mês a mês (inclui meses vazios com zero). |
+| `analytics_by_category(…, tipo)` | Total por categoria-folha + `parent_id` (o app soma no pai). |
+| `analytics_by_member(…)` / `analytics_by_source(…)` | Por membro / por cartão ou conta. |
+| `analytics_position(ws, até, conta?, cartão?)` | Saldo atual (ou numa data passada), faturas em aberto e a vencer, limite, previstos e **saldo projetado** (RN-65). |
+| `analytics_upcoming(ws, dias)` | Contas previstas e faturas não quitadas que vencem até hoje + N dias (inclui vencidas). |
+
+Tipo novo: `analytics_basis` = `accrual` (competência) | `cash` (caixa). Valor inválido → erro `22P02`.
+
+**Índices novos** (planos medidos com 200 mil lançamentos em 100 espaços, ver ADR-0015):
+`card_invoices (workspace_id, due_date)` · `transactions (account_id)` e `(card_id)` parciais ·
+`transfers (from_account_id)`, `(to_account_id)` · `invoice_payments (account_id)` ·
+`transactions (workspace_id, occurred_on) where not is_settled`.
+
+**Correção**: `create_card_purchase` recriada — a 1ª compra parcelada num cartão sem fatura no ciclo falhava
+(a fatura criada dentro de um subselect não era visível no mesmo comando).
+
 ### Ciclo de vida da conta (migration 0005)
 `transfer_workspace_ownership`, `get_account_deletion_blockers`, `delete_my_account` (ADR-0013).
 
