@@ -109,11 +109,11 @@ export function ContributionForm({
                   aria-checked={selected === g.id}
                   onClick={() => setSelected(g.id)}
                   className={cn(
-                    "grid min-h-16 gap-1 rounded-xl border bg-card px-3 py-2 text-left transition-colors hover:bg-accent/60",
+                    "grid min-h-16 min-w-0 grid-cols-[minmax(0,1fr)] gap-1 rounded-xl border bg-card px-3 py-2 text-left transition-colors hover:bg-accent/60",
                     selected === g.id && "border-primary ring-2 ring-primary/30",
                   )}
                 >
-                  <span className="flex items-center gap-2">
+                  <span className="flex min-w-0 items-center gap-2">
                     <GoalIcon icon={g.icon} color={g.color} className="size-4 shrink-0" />
                     <span className="truncate text-sm font-medium">{g.name}</span>
                   </span>
