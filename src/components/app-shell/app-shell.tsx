@@ -30,15 +30,17 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Topo (celular) */}
-      <header className="glass sticky top-0 z-40 flex h-14 items-center justify-between gap-2 border-b px-3 lg:hidden">
+      <header className="glass pt-safe sticky top-0 z-40 border-b lg:hidden">
+        <div className="flex h-14 items-center justify-between gap-2 px-3">
         <Link href="/painel" aria-label="Início">
           <LogoMark className="size-7" />
         </Link>
         <WorkspaceSwitcher workspaces={workspaces} activeId={active.id} compact />
         <UserMenu name={user.fullName} email={user.email} />
+        </div>
       </header>
 
-      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-6 pb-28 sm:px-6 lg:px-10 lg:pt-10 lg:pb-12">
+      <main id="conteudo" className="mx-auto w-full max-w-6xl px-4 pt-6 pb-[calc(7rem+env(safe-area-inset-bottom))] sm:px-6 lg:px-10 lg:pt-10 lg:pb-12">
         {children}
       </main>
 

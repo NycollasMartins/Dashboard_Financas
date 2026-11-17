@@ -231,13 +231,22 @@
 }
 
 @utility glass {
-  background-color: color-mix(in oklch, var(--card) 72%, transparent);
+  background-color: color-mix(in oklch, var(--card) 90%, transparent);
   backdrop-filter: blur(16px) saturate(140%);
   -webkit-backdrop-filter: blur(16px) saturate(140%);
 }
 
+/* Safe areas do iPhone (notch / Dynamic Island / barra de gestos). Só têm
+   efeito com viewport-fit=cover (definido no layout raiz). */
 @utility pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
+}
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+@utility px-safe {
+  padding-left: max(env(safe-area-inset-left), 0px);
+  padding-right: max(env(safe-area-inset-right), 0px);
 }
 
 @media (prefers-reduced-motion: reduce) {

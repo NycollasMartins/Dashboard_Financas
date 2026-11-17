@@ -12,7 +12,11 @@ export const metadata: Metadata = {
   description: "Dashboard financeiro pessoal e familiar.",
   applicationName: "Finanças",
   robots: { index: false, follow: false },
+  // iOS: "Adicionar à Tela de Início" abre em tela cheia; a barra de status fica
+  // translúcida sobre o app (por isso o header usa padding de safe-area).
   appleWebApp: { capable: true, title: "Finanças", statusBarStyle: "black-translucent" },
+  icons: { apple: "/apple-touch-icon.png" },
+  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {
