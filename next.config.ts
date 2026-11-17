@@ -13,6 +13,10 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   poweredByHeader: false,
+  // O indicador "N" cobria a barra inferior no celular; erros continuam aparecendo no overlay.
+  devIndicators: false,
+  // Permite abrir o servidor de desenvolvimento pelo IP da rede local (celular no Wi-Fi).
+  allowedDevOrigins: ["192.168.*.*", "10.*.*.*", "172.*.*.*", "*.local"],
   turbopack: {
     rules: {
       "*.css": {
