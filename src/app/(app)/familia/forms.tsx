@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Check, Copy, MessageCircle, MoreHorizontal, Shield, Trash2, UserMinus, LogOut, X } from "lucide-react";
+import { Check, Copy, Crown, MessageCircle, MoreHorizontal, Shield, Trash2, UserMinus, LogOut, X } from "lucide-react";
 import { Field, FormMessage, SubmitButton } from "@/components/forms/fields";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,6 +31,7 @@ import {
   removeMemberAction,
   renameWorkspaceAction,
   revokeInviteAction,
+  transferOwnershipAction,
 } from "./actions";
 
 /** Mostra toast quando uma action (chamada fora de <form>) termina. */
@@ -176,14 +177,19 @@ export function MemberActions({
   role,
   isSelf,
   canManage,
+  canTransfer = false,
+  memberName = "esta pessoa",
 }: {
   workspaceId: string;
   userId: string;
   role: "admin" | "member";
   isSelf: boolean;
   canManage: boolean;
+  canTransfer?: boolean;
+  memberName?: string;
 }) {
   const { pending, run } = useToastAction();
+  const [confirmTransfer, setConfirmTransfer] = useState(false);
 
   if (isSelf) {
     return (
@@ -203,6 +209,7 @@ export function MemberActions({
   if (!canManage) return null;
 
   return (
+    <>
     <DropdownMenu>
       <DropdownMenuTrigger
         render={<Button variant="ghost" size="icon" disabled={pending} aria-label="Ações do membro" />}
@@ -215,11 +222,34 @@ export function MemberActions({
         >
           <Shield /> {role === "admin" ? "Tornar membro" : "Tornar admin"}
         </DropdownMenuItem>
+        {canTransfer && (
+          <DropdownMenuItem onClick={() => setConfirmTransfer(true)}>
+            <Crown /> Transferir posse
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem variant="destructive" onClick={() => run(() => removeMemberAction(workspaceId, userId))}>
           <UserMinus /> Remover da família
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+      <Dialog open={confirmTransfer} onOpenChange={setConfirmTransfer}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Transferir a posse para {memberName}?</DialogTitle>
+            <DialogDescription>
+              A pessoa vira dona da família (pode excluí-la e não pode ser removida). Você continua como
+              administrador. Só o novo dono pode desfazer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose render={<Button variant="ghost" />}>Cancelar</DialogClose>
+            <DialogClose render={<Button />} onClick={() => run(() => transferOwnershipAction(workspaceId, userId))}>
+              Transferir posse
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

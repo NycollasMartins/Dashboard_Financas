@@ -152,3 +152,16 @@ export async function deleteHouseholdAction(workspaceId: string): Promise<Action
   revalidatePath("/", "layout");
   redirect("/painel");
 }
+
+export async function transferOwnershipAction(workspaceId: string, newOwnerId: string): Promise<ActionState> {
+  const input = z.object({ workspaceId: uuidSchema, newOwnerId: uuidSchema }).safeParse({ workspaceId, newOwnerId });
+  if (!input.success) return fail("Dados inválidos.");
+  await requireUser();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("transfer_workspace_ownership", {
+    p_workspace_id: input.data.workspaceId,
+    p_new_owner: input.data.newOwnerId,
+  });
+  if (error) return fail(dbErrorMessage(error, "Não foi possível transferir a posse."));
+  return done("Posse transferida. Você continua como administrador.");
+}

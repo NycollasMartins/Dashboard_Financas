@@ -11,11 +11,11 @@ test.describe("autenticação (sem sessão)", () => {
 
   test("senha errada mostra erro e mantém o e-mail", async ({ page }) => {
     await page.goto("/entrar");
-    await page.getByLabel("E-mail").fill(USERS.ana.email);
+    await page.getByLabel("E-mail", { exact: true }).fill(USERS.ana.email);
     await page.getByLabel("Senha", { exact: true }).fill("SenhaErrada1");
     await page.getByRole("button", { name: "Entrar" }).click();
     await expect(page.getByRole("alert").filter({ hasText: "E-mail ou senha incorretos" })).toBeVisible();
-    await expect(page.getByLabel("E-mail")).toHaveValue(USERS.ana.email);
+    await expect(page.getByLabel("E-mail", { exact: true })).toHaveValue(USERS.ana.email);
   });
 
   test("validação do cadastro em pt-BR", async ({ page }) => {

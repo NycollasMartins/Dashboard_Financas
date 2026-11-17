@@ -11,12 +11,16 @@ export function SignInForm() {
   const params = useSearchParams();
   const next = params.get("next") ?? "";
   const linkError = params.get("erro") === "link";
+  const accountDeleted = params.get("conta") === "excluida";
   const [state, action] = useActionState(signInAction, idleState);
 
   return (
     <form action={action} className="grid gap-4" noValidate>
       {linkError && state.status === "idle" && (
         <FormMessage state={{ status: "error", message: "Link inválido ou expirado. Tente novamente." }} />
+      )}
+      {accountDeleted && state.status === "idle" && (
+        <FormMessage state={{ status: "success", message: "Sua conta foi excluída. Sentiremos sua falta." }} />
       )}
       <FormMessage state={state} />
       <input type="hidden" name="next" value={next} />

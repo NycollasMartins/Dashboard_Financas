@@ -165,6 +165,8 @@ async function ActiveHousehold({ workspace, userId }: { workspace: WorkspaceSumm
                   role={m.role}
                   isSelf={m.user_id === userId}
                   canManage={isAdmin}
+                  canTransfer={isOwner}
+                  memberName={m.full_name || m.email}
                 />
               )}
             </li>

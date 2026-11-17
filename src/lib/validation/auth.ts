@@ -39,3 +39,13 @@ export const newPasswordSchema = z
     error: "As senhas não conferem.",
     path: ["confirm"],
   });
+
+export const emailChangeSchema = z.object({
+  newEmail: emailSchema,
+  password: z.string().min(1, { error: "Informe sua senha atual." }).max(72),
+});
+
+export const deleteAccountSchema = z.object({
+  password: z.string().min(1, { error: "Informe sua senha atual." }).max(72),
+  confirmation: z.literal("EXCLUIR", { error: 'Digite EXCLUIR para confirmar.' }),
+});

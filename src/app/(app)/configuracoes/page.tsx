@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { KeyRound, LogOut, MessageCircle, Palette, User } from "lucide-react";
+import { AtSign, KeyRound, LogOut, MessageCircle, Palette, ShieldAlert, User } from "lucide-react";
 import { signOutAction } from "@/app/(auth)/actions";
 import { PageHeader } from "@/components/page-header";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { createClient } from "@/lib/supabase/server";
 import { getWorkspaceContext } from "@/lib/workspaces/context";
+import { DeleteAccountSection, EmailChangeForm } from "./account-forms";
 import { ProfileForm, ThemePicker } from "./profile-form";
 
 export const metadata: Metadata = { title: "Configurações" };
@@ -22,9 +24,21 @@ function Block({ icon: Icon, title, children }: { icon: typeof User; title: stri
   );
 }
 
+async function EmailChange() {
+  const { user } = await getWorkspaceContext();
+  return <EmailChangeForm currentEmail={user.email} />;
+}
+
+async function DeleteAccount() {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_account_deletion_blockers");
+  if (error) throw error;
+  return <DeleteAccountSection blockers={data} />;
+}
+
 async function Profile() {
   const { user } = await getWorkspaceContext();
-  return <ProfileForm fullName={user.fullName} email={user.email} />;
+  return <ProfileForm fullName={user.fullName} />;
 }
 
 export default function SettingsPage() {
@@ -53,6 +67,11 @@ export default function SettingsPage() {
               </form>
             </div>
           </Block>
+          <Block icon={AtSign} title="E-mail">
+            <Suspense fallback={<Skeleton className="h-40" />}>
+              <EmailChange />
+            </Suspense>
+          </Block>
           <Block icon={MessageCircle} title="WhatsApp e Telegram">
             <p className="text-sm text-muted-foreground">
               Na Fase 6 você vai gerar aqui um código para vincular seu número e lançar gastos por mensagem.
@@ -60,6 +79,14 @@ export default function SettingsPage() {
           </Block>
         </div>
       </div>
+      <section className="mt-4 rounded-2xl border border-destructive/30 bg-destructive/5 p-5 sm:p-6">
+        <h2 className="mb-3 flex items-center gap-2 text-base font-semibold">
+          <ShieldAlert className="size-[18px] text-destructive" /> Excluir conta
+        </h2>
+        <Suspense fallback={<Skeleton className="h-24" />}>
+          <DeleteAccount />
+        </Suspense>
+      </section>
     </>
   );
 }

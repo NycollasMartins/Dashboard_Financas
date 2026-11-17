@@ -11,7 +11,7 @@ import { useMounted } from "@/lib/use-mounted";
 import { cn } from "@/lib/utils";
 import { updateProfileAction } from "../actions";
 
-export function ProfileForm({ fullName, email }: { fullName: string; email: string }) {
+export function ProfileForm({ fullName }: { fullName: string }) {
   const [state, action] = useActionState(updateProfileAction, idleState);
   useEffect(() => {
     if (state.status === "success" && state.message) toast.success(state.message);
@@ -20,7 +20,6 @@ export function ProfileForm({ fullName, email }: { fullName: string; email: stri
   return (
     <form action={action} className="grid gap-4" noValidate>
       <Field label="Nome" name="fullName" defaultValue={fullName} autoComplete="name" errors={state.fieldErrors?.fullName} />
-      <Field label="E-mail" name="email" defaultValue={email} disabled hint="A troca de e-mail chega numa fase futura." />
       {state.status === "error" && <FormMessage state={state} />}
       <SubmitButton pendingText="Salvando…" className="justify-self-start">
         Salvar
