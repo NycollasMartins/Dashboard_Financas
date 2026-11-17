@@ -6,6 +6,7 @@ import {
   getByCategory,
   getMonthly,
   getPosition,
+  getSavings,
   getTotals,
   getUpcoming,
   type AnalyticsScope,
@@ -53,3 +54,9 @@ export function loadCategoryTree(scope: AnalyticsScope, period: Period, lookups:
   const meta = lookups.categories.map((c) => [c.id, { id: c.id, name: c.name, color: c.color, icon: c.icon }] as const);
   return treeBy(JSON.stringify({ scope, period }), JSON.stringify(meta));
 }
+
+const savingsBy = cache((k: string) => {
+  const { scope, range } = JSON.parse(k);
+  return getSavings(scope, range);
+});
+export const loadSavings = (scope: AnalyticsScope, range: DateRange) => savingsBy(key(scope, range));

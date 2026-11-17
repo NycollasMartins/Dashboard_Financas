@@ -62,6 +62,8 @@ export function KpiCard({
   planned,
   plannedLabel,
   highlight,
+  note,
+  className,
 }: {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
@@ -74,6 +76,8 @@ export function KpiCard({
   planned?: number;
   plannedLabel?: string;
   highlight?: boolean;
+  note?: React.ReactNode;
+  className?: string;
 }) {
   const current = rate !== undefined ? (rate ?? 0) : (cents ?? 0);
   return (
@@ -81,13 +85,14 @@ export function KpiCard({
       className={cn(
         "grid min-w-0 content-between gap-2 rounded-2xl border bg-card p-4 sm:p-5",
         highlight && "bg-[linear-gradient(140deg,color-mix(in_oklch,var(--primary)_12%,var(--card)),var(--card)_60%)]",
+        className,
       )}
     >
       <div className="flex items-center justify-between gap-2 text-muted-foreground">
         <h3 className="truncate text-xs font-medium sm:text-sm">{label}</h3>
         <Icon className={cn("size-4 shrink-0", iconClass)} />
       </div>
-      <p className="font-heading text-xl font-semibold sm:text-2xl lg:text-[1.6rem]">
+      <p className="font-heading text-xl font-semibold sm:text-2xl xl:text-[1.45rem] 2xl:text-[1.6rem]">
         {rate !== undefined ? (
           rate === null ? <span className="text-muted-foreground">—</span> : `${Math.round(rate * 100)}%`
         ) : (
@@ -104,6 +109,7 @@ export function KpiCard({
           </span>
         ) : null}
       </div>
+      {note && <p className="text-[11px] text-muted-foreground">{note}</p>}
     </article>
   );
 }
@@ -116,6 +122,7 @@ export function ProjectionCard({
   plannedIncomeCents,
   plannedExpenseCents,
   invoicesDueCents,
+  plannedSavingsCents = 0,
   untilLabel,
 }: {
   isProjection: boolean;
@@ -124,6 +131,7 @@ export function ProjectionCard({
   plannedIncomeCents: number;
   plannedExpenseCents: number;
   invoicesDueCents: number;
+  plannedSavingsCents?: number;
   untilLabel: string;
 }) {
   const negative = projectedCents < 0;
@@ -147,11 +155,14 @@ export function ProjectionCard({
         </p>
       </div>
       {isProjection && (
-        <dl className="relative grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4">
+        <dl className="relative grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-[repeat(auto-fit,minmax(9rem,1fr))]">
           <ProjectionTerm label="Saldo hoje" cents={balanceCents} />
           <ProjectionTerm label="Receitas previstas" cents={plannedIncomeCents} sign="+" tone="text-income" />
           <ProjectionTerm label="Despesas previstas" cents={plannedExpenseCents} sign="−" tone="text-expense" />
           <ProjectionTerm label="Faturas a vencer" cents={invoicesDueCents} sign="−" tone="text-expense" />
+          {plannedSavingsCents !== 0 && (
+            <ProjectionTerm label="Aportes previstos (caixinhas)" cents={plannedSavingsCents} sign="−" tone="text-savings" />
+          )}
         </dl>
       )}
     </section>

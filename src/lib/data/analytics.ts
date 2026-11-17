@@ -132,6 +132,8 @@ export type Position = {
   availableLimitCents: number;
   plannedIncomeCents: number;
   plannedExpenseCents: number;
+  /** Aportes previstos em metas que tiram dinheiro das contas consideradas (caixinha sem conta). */
+  plannedSavingsCents: number;
   projectedBalanceCents: number;
   isProjection: boolean;
 };
@@ -155,6 +157,7 @@ export async function getPosition(scope: AnalyticsScope, until: string): Promise
     availableLimitCents: data.available_limit_cents,
     plannedIncomeCents: data.planned_income_cents,
     plannedExpenseCents: data.planned_expense_cents,
+    plannedSavingsCents: data.planned_savings_cents,
     projectedBalanceCents: data.projected_balance_cents,
     isProjection: data.is_projection,
   };
@@ -185,4 +188,27 @@ export async function getUpcoming(workspaceId: string, days = 15): Promise<Upcom
     cardId: r.card_id as string | null,
     isOverdue: r.is_overdue,
   }));
+}
+
+export type Savings = { savedCents: number; depositedCents: number; withdrawnCents: number; plannedCents: number };
+
+/** Guardado em metas no período (aportes − retiradas), separado das despesas (ADR-0016). */
+export async function getSavings(scope: AnalyticsScope, range: DateRange): Promise<Savings> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .rpc("analytics_savings", {
+      p_workspace_id: scope.workspaceId,
+      p_from: range.from,
+      p_to: range.to,
+      p_member_id: scope.memberId,
+      p_account_id: scope.accountId,
+    })
+    .single();
+  if (error) throw error;
+  return {
+    savedCents: data.saved_cents,
+    depositedCents: data.deposited_cents,
+    withdrawnCents: data.withdrawn_cents,
+    plannedCents: data.planned_cents,
+  };
 }

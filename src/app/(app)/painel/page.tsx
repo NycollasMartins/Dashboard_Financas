@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { ArrowDownRight, ArrowUpRight, LineChart, PiggyBank, Scale } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, LineChart, PiggyBank, Scale, Target } from "lucide-react";
+import { Money } from "@/components/money";
+import { GoalsWidget } from "@/components/goals/goals-widget";
+import { listarMetas } from "@/lib/goals/service";
+import { createClient } from "@/lib/supabase/server";
 import { CategoryBreakdown, AverageComparison, SectionEmpty } from "@/components/dashboard/categories";
 import { DashboardNavProvider, DashboardToolbar, PendingArea } from "@/components/dashboard/dashboard-nav";
 import { InsightsCard } from "@/components/dashboard/insights";
@@ -20,7 +24,7 @@ import { formatMonthTitle, todayISO, type ISODate } from "@/lib/dates";
 import { BASIS_FROM_PARAM, BASIS_LABEL } from "@/lib/domain/basis";
 import { parseDashboardFilters } from "@/lib/validation/analytics";
 import { getWorkspaceContext } from "@/lib/workspaces/context";
-import { loadCategoryTree, loadMonthly, loadPosition, loadTotals, loadUpcoming } from "./load";
+import { loadCategoryTree, loadMonthly, loadPosition, loadSavings, loadTotals, loadUpcoming } from "./load";
 
 export const metadata: Metadata = { title: "Painel" };
 
@@ -118,6 +122,9 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/painel">[
             <Suspense fallback={null}>
               <Insights ctx={ctx} />
             </Suspense>
+            <Suspense fallback={<BlockSkeleton h="h-40" />}>
+              <Goals ctx={ctx} />
+            </Suspense>
             <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:items-start lg:gap-5">
               <Suspense fallback={<BlockSkeleton h="h-96" />}>
                 <Categories ctx={ctx} />
@@ -166,11 +173,13 @@ const shortDate = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
 
 async function Overview({ ctx }: { ctx: Ctx }) {
   const { scope, period, today } = ctx;
-  const [cur, prev, now, end] = await Promise.all([
+  const [cur, prev, now, end, saved, prevSaved] = await Promise.all([
     loadTotals(scope, period),
     loadTotals(scope, period.previous),
     loadPosition(scope, today),
     loadPosition(scope, period.to),
+    loadSavings(scope, period),
+    loadSavings(scope, period.previous),
   ]);
   const prevLabel = prevLabelOf(period);
   const balance = cur.incomeCents - cur.expenseCents;
@@ -186,7 +195,7 @@ async function Overview({ ctx }: { ctx: Ctx }) {
           <NewEntryButton label="Lançar agora" />
         </SectionEmpty>
       )}
-      <section aria-label="Resumo do período" className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+      <section aria-label="Resumo do período" className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:gap-4 xl:grid-cols-5">
         <h2 className="sr-only">Resumo do período</h2>
         <KpiCard label="Receitas" icon={ArrowUpRight} iconClass="text-income" metric="income"
           cents={cur.incomeCents} previous={prev.incomeCents} previousLabel={prevLabel}
@@ -196,8 +205,12 @@ async function Overview({ ctx }: { ctx: Ctx }) {
           planned={cur.expensePlannedCents} plannedLabel="previsto" />
         <KpiCard label="Saldo do período" icon={Scale} iconClass="text-primary" metric="balance" highlight
           cents={balance} previous={prevBalance} previousLabel={prevLabel} />
-        <KpiCard label="Taxa de economia" icon={PiggyBank} iconClass="text-savings" metric="rate"
-          rate={rate} previous={prevRate} previousLabel={prevLabel} />
+        <KpiCard label="Guardado em metas" icon={Target} iconClass="text-savings" metric="income"
+          cents={saved.savedCents} previous={prevSaved.savedCents} previousLabel={prevLabel}
+          planned={saved.plannedCents} plannedLabel="previsto" />
+        <KpiCard label="Taxa de economia" icon={PiggyBank} iconClass="text-savings" metric="rate" className="col-span-2 md:col-span-1"
+          rate={rate} previous={prevRate} previousLabel={prevLabel}
+          note={cur.incomeCents > 0 && saved.savedCents > 0 ? <>inclui <Money cents={saved.savedCents} /> ({Math.round((saved.savedCents / cur.incomeCents) * 100)}% da renda) em metas</> : undefined} />
       </section>
       <ProjectionCard
         isProjection={end.isProjection}
@@ -206,6 +219,7 @@ async function Overview({ ctx }: { ctx: Ctx }) {
         plannedIncomeCents={end.plannedIncomeCents}
         plannedExpenseCents={end.plannedExpenseCents}
         invoicesDueCents={end.invoicesDueCents}
+        plannedSavingsCents={end.plannedSavingsCents}
         untilLabel={shortDate(period.to)}
       />
       <PositionStrip
@@ -243,6 +257,12 @@ async function Insights({ ctx }: { ctx: Ctx }) {
     ledgerHref: (id) => ctx.ledgerHref({ categoria: id, tipo: "expense" }),
   });
   return <InsightsCard insights={insights} />;
+}
+
+async function Goals({ ctx }: { ctx: Ctx }) {
+  const res = await listarMetas({ supabase: await createClient(), userId: "", today: ctx.today }, ctx.scope.workspaceId);
+  if (!res.ok) return null;
+  return <GoalsWidget goals={res.data.filter((g) => g.status === "active" || g.status === "achieved")} />;
 }
 
 async function Categories({ ctx }: { ctx: Ctx }) {
@@ -350,8 +370,8 @@ function BlockSkeleton({ h }: { h: string }) {
 function OverviewSkeleton() {
   return (
     <div aria-busy="true" className="grid gap-4">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
-        {Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-32 rounded-2xl" />)}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:gap-4 xl:grid-cols-5">
+        {Array.from({ length: 5 }, (_, i) => <Skeleton key={i} className={i === 4 ? "col-span-2 h-32 rounded-2xl md:col-span-1" : "h-32 rounded-2xl"} />)}
       </div>
       <Skeleton className="h-44 rounded-2xl" />
       <div className="grid gap-2 sm:grid-cols-3 sm:gap-3">
