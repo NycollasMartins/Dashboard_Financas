@@ -1,3 +1,29 @@
+# APIs internas (metas, lançamentos e assistente)
+
+> Contrato comum (`src/lib/service-result.ts`): `Ctx = { supabase, userId, today? }` com a **sessão do usuário**
+> (RLS decide) e `Result<T>` (`ok`/`message`/`fieldErrors`), nunca exceção para erro de negócio.
+
+## Lançamentos (`src/lib/ledger/service.ts`) — Fase 5
+| Função | Efeito |
+|---|---|
+| `registrarLancamento(ctx, input, { source? })` | Receita, despesa, compra no cartão (à vista/parcelada via `create_card_purchase`) ou transferência; `input` = `entrySchema`. `source` = `manual` (telas) ou `assistant`. Devolve `{ id, table, installmentPlan, message }`. |
+| `excluirLancamento(ctx, table, id)` | Apaga lançamento (restaurável por 24 h) ou transferência. |
+| `excluirCompraParcelada(ctx, transactionId)` | Apaga todas as parcelas a partir de qualquer uma. |
+| `confirmarLancamento(ctx, id, settled = true)` | Previsto → pago/recebido (ou volta, no "desfazer"). |
+
+As Server Actions de lançamento (`src/app/(app)/_actions/ledger.ts`) chamam estas funções.
+
+## Assistente (`src/lib/assistant/server/engine.ts`) — Fase 5
+`handleAssistant(ctx: EngineCtx, input: ChatInput): Promise<ChatReply[]>` — ponto de entrada **de todos os canais**.
+- `EngineCtx = Ctx & { channel: "app" | "whatsapp" | "telegram", activeWorkspaceId, workspaces, providers? }`
+- `ChatInput`: `{ kind: "text", text }` · `{ kind: "confirm", pendingId, edits? }` · `{ kind: "cancel", pendingId }` ·
+  `{ kind: "choose", pendingId, value }` · `{ kind: "undo", batchId? }`
+- `ChatReply`: `text` (pronto para qualquer canal), `tone`, e opcionalmente `card` (itens a confirmar, editáveis),
+  `question` (opções numeradas), `done` (linhas gravadas + `batchId` para desfazer, `celebrate`).
+- Canais de texto: responder "1"/"2", "sim"/"cancelar", o valor ou o motivo continua a conversa pendente.
+- A Fase 6 só precisa: identificar o usuário pelo número (`channel_links`), criar o cliente com a sessão dele,
+  chamar `handleAssistant` com `channel: "whatsapp"` e enviar `reply.text` (+ opções numeradas).
+
 # API interna de metas (`src/lib/goals/service.ts`)
 
 Camada de **serviço de domínio** da Fase 4. Toda regra de metas passa por aqui — as telas (Server Actions

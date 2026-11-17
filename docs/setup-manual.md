@@ -109,16 +109,38 @@ Change visibility → Make private*.
 
 ---
 
-## E. Próximas fases (não faça agora — só para você se planejar)
+## E. Chaves de IA do assistente (opcional, gratuito)
+
+Sem chaves o assistente funciona com o **parser local** (a maioria das mensagens). As chaves só ajudam nas
+mensagens difíceis. **Não cadastre cartão/billing** em nenhum dos dois: assim continua grátis.
+
+**Google Gemini (principal)**
+1. Acesse <https://aistudio.google.com> e entre com uma conta Google.
+2. Clique em **Get API key** → **Create API key** (escolha ou crie um projeto).
+3. Copie a chave e coloque em `.env.local`: `GEMINI_API_KEY=...`
+4. Em **Rate limits** (no AI Studio) confira o limite do modelo `gemini-3.1-flash-lite` (≈ 500/dia no gratuito, por projeto).
+5. Atenção à privacidade: no gratuito o Google pode usar o texto enviado para melhorar produtos (o app só envia o
+   texto da mensagem e os nomes de categorias/contas/cartões/metas — ver README).
+
+**Groq (reserva)**
+1. Acesse <https://console.groq.com> e crie a conta (Google, GitHub ou e-mail; sem cartão).
+2. Menu **API Keys** → **Create API Key** → dê um nome (ex.: "financas") → copie (ela aparece uma vez só).
+3. Em `.env.local`: `GROQ_API_KEY=...`
+4. Em **Settings → Limits** confira o limite do modelo `openai/gpt-oss-20b`.
+
+**Depois de colocar as chaves**
+- Reinicie o `pnpm dev`. Na tela Assistente o aviso muda para "Entendo a maioria das mensagens aqui mesmo…".
+- Meça a acurácia real (gasta cota!): `EVAL_PROVIDER=gemini EVAL_LIMIT=40 pnpm eval:assistant` (ou `groq`).
+- Na Vercel: **Settings → Environment Variables** → adicione `GEMINI_API_KEY` e `GROQ_API_KEY` (sem `NEXT_PUBLIC_`!).
+- Para desligar a IA a qualquer momento: `ASSISTANT_AI_ENABLED=false`.
+
+## E2. Próximas fases (não faça agora — só para você se planejar)
 
 | Fase | Você vai precisar |
 |---|---|
-| 5 · IA | Chave gratuita do **Google AI Studio** (<https://aistudio.google.com>) e/ou do **Groq** (<https://console.groq.com>) |
 | 6 · WhatsApp | Conta de desenvolvedor Meta, app do tipo *Business*, produto **WhatsApp**, número de teste, token permanente (System User), *App Secret*, e configurar o webhook com a URL da Vercel |
 | 6 · Telegram | Criar o bot com o **@BotFather** e guardar o token |
 | 8 · Produção | Revisar variáveis, rotacionar chaves, ativar backups |
-
----
 
 ## F. Testar no iPhone
 

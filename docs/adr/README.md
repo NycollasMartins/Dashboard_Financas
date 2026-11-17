@@ -9,7 +9,7 @@ Uma ADR aceita não é editada; se a decisão mudar, crie outra que a substitua.
 | [0002](0002-multitenancy-workspaces-rls.md) | Multi-tenancy por workspace com RLS e FKs compostas | Aceita |
 | [0003](0003-dinheiro-e-datas.md) | Dinheiro em centavos e datas em America/Sao_Paulo | Aceita |
 | [0004](0004-bot-canais-desacoplados.md) | Bot com canais desacoplados (adapter) e service role restrita | Aceita |
-| [0005](0005-provedor-de-ia.md) | IA: Gemini como primário e Groq como alternativa, atrás de interface | Aceita (revisar na Fase 5) |
+| [0005](0005-provedor-de-ia.md) | IA: Gemini como primário e Groq como alternativa, atrás de interface | Revisada pelas ADR-0018/0019 |
 | [0006](0006-whatsapp-cloud-api.md) | WhatsApp Cloud API oficial, sem grupos; Telegram como alternativa | Aceita |
 | [0007](0007-convites-e-emails.md) | Convites por link compartilhável; SMTP próprio gratuito em produção | Aceita |
 | [0008](0008-cache-components-e-sessao.md) | Cache Components do Next 16 com sessão Supabase | Aceita |
@@ -22,3 +22,5 @@ Uma ADR aceita não é editada; se a decisão mudar, crie outra que a substitua.
 | [0015](0015-camada-analitica-e-graficos.md) | Camada analítica no banco (SECURITY INVOKER) e gráficos sem biblioteca | Aceita |
 | [0016](0016-aporte-em-meta-nao-e-despesa.md) | Aporte em meta não é despesa (reserva/caixinha, retirada com motivo) | Aceita |
 | [0017](0017-motor-de-projecao.md) | Motor de projeção a partir das regras (até 36 meses, sem gravar) | Aceita |
+| [0018](0018-ia-so-interpreta.md) | A IA só interpreta; o domínio valida, calcula e grava | Aceita |
+| [0019](0019-privacidade-cota-e-provedores.md) | Privacidade, cota e cadeia de provedores (local → Gemini → Groq → local) | Aceita |

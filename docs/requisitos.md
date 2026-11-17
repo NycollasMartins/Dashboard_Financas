@@ -99,9 +99,12 @@ Legenda de fase: **F1** = Fundação (feito), **F2…F8** = fases futuras.
 | RF-44 | Sugestões da IA → **Fase 5** (o cenário por categoria já existe, calculado por regra). |
 | RF-45 | API interna de metas reutilizável pela IA e pelo bot (docs/api-interna.md). |
 
-### 3.5 Lançamento por mensagem — IA + WhatsApp/Telegram (F5–F6)
+### 3.5 Lançamento por mensagem — IA (F5 ✅, no app) + WhatsApp/Telegram (F6)
 | ID | Requisito |
 |---|---|
+| RF-50a | (F5 ✅) Tela **Assistente** no app (e atalho no botão +): chat com sugestões, cartões de confirmação (Confirmar/Editar/Cancelar), opções, respostas em BRL e "desfazer"; histórico por usuário, apagável; aviso de privacidade. |
+| RF-50b | (F5 ✅) Intenções: registrar_despesa, registrar_receita, registrar_compra_parcelada, transferir, guardar_em_meta, retirar_de_meta, confirmar_previsto, consultar, desfazer_ultimo, ajuda. Vários lançamentos numa mensagem. |
+| RF-50c | (F5 ✅) Aprender a categoria corrigida pela pessoa ("padaria do zé" → Mercado) para o espaço. |
 | RF-50 | Interpretar mensagens em linguagem natural ("gastei 50 no Uber", "100 no mercado no crédito do Nubank", "ganhei 1000 de freela", "guardei 300 pra viagem") em dados estruturados. |
 | RF-51 | Registrar e responder com confirmação + saldo do mês. |
 | RF-52 | Se faltar informação ou houver ambiguidade (ex.: dois cartões "Nubank"), **perguntar antes de registrar**. |
@@ -237,6 +240,32 @@ nov/2026 = **24 meses**. Prazo no mês atual = 0 meses ("falta tudo agora"); pra
 ### Bot e importação
 - **RN-30 (duplicatas)** Hash = SHA-256 de (data, valor em centavos, descrição normalizada sem acentos/espaços extras, conta/cartão, id externo do OFX quando existir). Lançamento com hash existente no espaço é marcado como duplicado e não é importado por padrão.
 - **RN-31** O bot só registra com confiança suficiente; senão, pergunta. "Desfazer" apaga apenas o último lançamento **criado pelo bot para aquele usuário** nas últimas 24 h.
+
+### Assistente (Fase 5) — ver ADR-0018 e ADR-0019
+- **RN-90** A IA só **interpreta**. Validação (Zod), cálculo e gravação são do sistema, pelas mesmas APIs das telas.
+- **RN-91** Camadas: parser local (sem rede/cota) → Gemini → Groq → parser local. A IA só é chamada quando o
+  parser local tem confiança < 0,8 (sem verbo claro, sem valor, sem categoria reconhecida, ambiguidade).
+- **RN-92** Enviado ao provedor: só o texto (≤ 500 caracteres), data/hora e NOMES de categorias, contas,
+  cartões e metas. Nunca saldos, valores do histórico, e-mails ou nomes de pessoas.
+- **RN-93** Grava direto (com "desfazer") só se: parser local confiante, 1 item e valor ≤ R$ 1.000
+  (configurável). Pede confirmação: vários itens, resultado da IA, baixa confiança, valor acima do limite.
+- **RN-94** Pergunta antes de gravar quando falta dado obrigatório ou há ambiguidade, com opções:
+  valor ausente; crédito sem cartão (com 2+ cartões); nome que é cartão E conta ("no nubank"); transferência
+  sem origem/destino; meta não identificada; retirada sem motivo.
+- **RN-95** Valores aceitos: "50", "R$ 50,90", "50.90", "1.234,56", "50 conto/pila", "1k", "1,5k", "2 mil",
+  "mil e duzentos", "cinquenta reais". Números de parcelas ("10x"), dias ("dia 5"), datas e % não são valor.
+- **RN-96** Datas relativas no fuso de São Paulo: hoje, ontem, anteontem, "dia 5" (se for depois de hoje,
+  é do mês passado), "05/11", dia da semana (+ "passada"). Data futura vinda da IA é ignorada.
+- **RN-97** Categoria: regras aprendidas do espaço → sinônimos (uber/99/táxi → Transporte; ifood → Restaurantes
+  e delivery; …) → nome da categoria no texto. Corrigir a categoria no cartão grava a regra.
+- **RN-98** "paguei o aluguel"/"recebi o salário" **sem valor** = confirmar o previsto correspondente (até 45 dias
+  antes e 20 depois); vários candidatos → pergunta qual; nenhum → orienta a informar o valor.
+- **RN-99** "Desfazer" (texto ou botão) reverte o **último lote** do assistente daquele usuário em 24 h: apaga
+  lançamentos/aportes, apaga o plano de parcelas inteiro, ou volta o previsto para "não pago".
+- **RN-100** Cota: por usuário/dia/provedor (padrão 40) e por minuto (padrão 8), atômica no banco; sem cota →
+  próxima camada. Estado de conversa expira em 15 min.
+- **RN-101** Espaço: "na família" / "no meu individual" na mensagem muda o destino (se a pessoa for membro);
+  senão, o espaço ativo. Toda gravação registra origem (`assistant`, canal) e a mensagem original (auditoria).
 - **RN-32** Limite de taxa do bot: 30 mensagens/min e 500/dia por número.
 
 ### Conta e posse (Fase 1 — pendências)
@@ -327,6 +356,16 @@ Exceções: logado com outro e-mail (oferece trocar de conta), convite expirado/
   máscara independente do cursor (`beforeinput`), com teste E2E.
 - (Fase 4) Meta: aporte maior que o restante, retirada que zera, prazo no passado/no mês atual, meta sem
   aporte, sobra negativa, meta criada neste mês (ritmo pelo mês atual) — todos tratados e testados.
+
+## 9c. Critérios de aceite da Fase 5 (verificados)
+- [x] Parser local: 169 mensagens (intenção 100%) e holdout de 40 escritas depois (1ª medição honesta: intenção
+      77,5%, precisão quando confiante 87,1%; após correções gerais: 100%) — ver README §Assistente.
+- [x] IA: saída fora do schema rejeitada; nomes inexistentes viram null; valor inventado descartado; fallback
+      Gemini → Groq → local testado com provedor simulado.
+- [x] Integração mensagem → banco (8 cenários): grava, confirma, pergunta, aprende categoria, consulta, desfaz.
+- [x] RLS: histórico/sessão/ações só do próprio usuário; regras por família; cota atômica (pgTAP, 18 asserções).
+- [x] E2E do chat em desktop, iPhone 15, iPhone SE e Android.
+- [ ] Acurácia contra o Gemini/Groq reais: **pendente da chave** (`EVAL_PROVIDER=gemini pnpm eval:assistant`).
 
 ## 9b. Critérios de aceite da Fase 4 (verificados)
 - [x] Aporte não aparece em despesas; saldo de origem cai, reserva sobe, patrimônio igual (pgTAP).

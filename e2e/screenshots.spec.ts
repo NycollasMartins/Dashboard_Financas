@@ -1,4 +1,4 @@
-import { devices, test } from "@playwright/test";
+import { devices, expect, test } from "@playwright/test";
 
 /**
  * Gera as imagens do README em docs/images (pnpm screenshots).
@@ -63,6 +63,29 @@ for (const t of TARGETS) {
       await page.getByLabel("Valor", { exact: true }).pressSequentially("30000");
       await page.waitForTimeout(500);
       await page.screenshot({ path: `docs/images/${t.name}-guardar-meta.png` });
+    });
+
+    test("assistente", async ({ page }) => {
+      await page.goto("/assistente");
+      const input = page.getByLabel("Mensagem para o assistente");
+      await expect(input).toBeVisible();
+      const conv = page.getByRole("region", { name: "Conversa" });
+      for (const [msg, wait] of [
+        ["gastei 45,90 no ifood ontem", /Gravado/],
+        ["gastei 30 no uber e 80 no mercado", /Confira os itens/],
+      ] as const) {
+        await input.fill(msg);
+        await input.press("Enter");
+        await expect(conv.getByText(wait).last()).toBeVisible({ timeout: 20_000 });
+      }
+      await page.waitForTimeout(500);
+      await page.screenshot({ path: `docs/images/${t.name}-assistente.png` });
+      await conv.getByRole("button", { name: "Cancelar" }).last().click();
+      await input.fill("desfazer");
+      await input.press("Enter");
+      await expect(conv.getByText(/Desfeito/).last()).toBeVisible({ timeout: 20_000 });
+      await page.getByText(/IA não configurada|Entendo a maioria/).click();
+      await page.getByRole("button", { name: "Apagar histórico da conversa" }).click();
     });
 
     test("fatura", async ({ page }) => {

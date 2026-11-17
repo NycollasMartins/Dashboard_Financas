@@ -156,3 +156,15 @@ as colunas alinharem.
 - **Planejamento**: número-herói "Sobra mensal realista" + a conta que leva até ela (Renda − Fixas − Variáveis),
   compromissos, alerta (âmbar com ícone, nunca só cor) e tabela de distribuição.
 - Cores: o **violeta `savings`** identifica "guardado/metas" no app inteiro (KPI, botões, histórico).
+
+## Assistente (Fase 5)
+- **Bolhas**: usuário à direita (menta, `primary`); assistente à esquerda (`card` com borda; borda verde = gravado,
+  âmbar = atenção, vermelha = erro). Texto com quebra de linha preservada.
+- **Cartão de confirmação**: espaço de destino no topo; cada item com título, valor e linha "categoria · meio · data";
+  **Confirmar** (ou "Confirmar tudo"), **Editar** (abre valor, categoria e data por item) e **Cancelar**. Aviso:
+  "Se você trocar a categoria, eu lembro para as próximas vezes".
+- **Opções** (perguntas): botões numerados "1. Inter", "2. Nubank" — o número também funciona por texto (WhatsApp).
+- **Gravado**: lista com ✓ e botão **Desfazer**. Só a última leva de respostas é interativa.
+- **Entrada**: campo de 48 px e fonte 16 px (sem zoom do iOS), botão enviar 48 px, sugestões em chips roláveis
+  acima; fica fixa acima da barra inferior no celular.
+- **Privacidade**: aviso recolhível no topo, com o que é enviado e o botão "Apagar histórico".

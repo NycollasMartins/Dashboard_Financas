@@ -1,6 +1,6 @@
 # ADR-0005 · Provedor de IA: Gemini (primário) + Groq (alternativa), atrás de interface
 
-**Status:** Aceita, **revisar no início da Fase 5** · **Decisor:** Arquiteto
+**Status:** Aceita e **revisada na Fase 5** pelas ADR-0018 (a IA só interpreta) e ADR-0019 (privacidade, cota, modelos) · **Decisor:** Arquiteto
 
 ## Contexto (pesquisa em 17/11/2026)
 - **Google Gemini API (AI Studio)**: tem plano gratuito, mas os limites mudaram várias vezes em 2026

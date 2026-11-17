@@ -7,8 +7,8 @@
 | 2 | Receitas, despesas, categorias, contas, cartões, faturas, parcelamento, recorrências | ✅ Concluída |
 | 3 | Dashboard e gráficos | ✅ Concluída |
 | 4 | Metas e projeções | ✅ Concluída |
-| 5 | IA de interpretação de mensagens | ⏭️ Próxima |
-| 6 | WhatsApp (Cloud API) + Telegram | Planejada |
+| 5 | IA de interpretação de mensagens | ✅ Concluída |
+| 6 | WhatsApp (Cloud API) + Telegram | ⏭️ Próxima |
 | 7 | Importação CSV/OFX e leitura de prints | Planejada |
 | 8 | PWA, testes finais, deploy e hardening | Planejada |
 
@@ -19,6 +19,8 @@
 - **Fase 1+**: troca de e-mail, exclusão de conta, transferência de posse (ADR-0013); ambiente de testes
   iPhone/Android com Playwright WebKit, CI no GitHub Actions, `pnpm dev:lan`, ícones e manifest PWA (ADR-0012).
 - **Fase 2+**: transferências, auditoria com desfazer (ADR-0009), subcategorias, recorrências semanais/anuais.
+- **Fase 5+**: holdout honesto de avaliação, aprendizado de categoria, confirmação editável, correções no chat
+  (envio antes da hidratação), testes de integração rodando no CI.
 - **Fase 4+**: motor de projeção por regras (36 meses), lista de lançamentos na visão caixa e com projeções,
   tela Planejamento, API interna de metas para IA/bot, correção do campo de valor (cursor).
 - **Fase 3+**: saldo projetado, insights por regra, ocultar valores, tabela alternativa em todo gráfico,
@@ -53,14 +55,14 @@
   "Guardado em metas" no painel e widget.
 - **Aceite (verificado):** nada contado duas vezes; mês atual da projeção = Fase 3; casos de borda dos cálculos.
 
-## Fase 5 · IA de mensagens (próxima)
-- Interface `AiParser` + `GeminiParser` + `GroqParser` (ADR-0005); saída JSON validada com Zod.
-- `MessageService`: intents `create_expense`, `create_income`, `goal_contribution`, `query`, `undo`,
-  `switch_workspace`; perguntas de esclarecimento com estado em `bot_sessions`.
-- Painel de teste ("simulador de chat") dentro do app, para usar antes de ter WhatsApp.
-- **Aceite:** conjunto de ≥ 50 frases reais com expectativa (teste de regressão do parser).
+## Fase 5 · IA de mensagens ✅
+- Parser local + Gemini/Groq atrás de `AiParser`; a IA só interpreta (ADR-0018); privacidade/cota (ADR-0019).
+- Motor de conversa por canal com estado no banco; tela Assistente; aprendizado de categoria; desfazer em lote.
+- API interna de lançamentos extraída (telas e assistente usam a mesma).
+- Avaliação: 169 mensagens + holdout de 40; integração mensagem → banco; pgTAP; E2E em 4 dispositivos.
+- **Pendente da chave:** medir a acurácia do Gemini/Groq reais (`pnpm eval:assistant`).
 
-## Fase 6 · WhatsApp + Telegram
+## Fase 6 · WhatsApp + Telegram (próxima)
 - Route Handlers `/api/webhooks/whatsapp` e `/api/webhooks/telegram`: verificação de assinatura,
   idempotência, rate limit, resposta em < 5 s (processamento com `after()`).
 - Vinculação por código no painel (Configurações → WhatsApp/Telegram).

@@ -255,6 +255,18 @@ colunas `is_projected`/`is_fixed`; `analytics_position` ganhou `planned_savings_
 | `analytics_savings(ws, de, até, membro?, conta?)` | Guardado no período (aportes − retiradas), depósitos, retiradas e previstos. |
 | `planning_capacity_inputs(ws, meses = 6)` | Por mês (N fechados + próximo projetado): receitas fixas/eventuais, despesas fixas/variáveis e guardado. O cálculo final é puro em TS (`savingsCapacity`). |
 
+### Fase 5 — assistente (migration 0009)
+| Tabela | O que é | Quem vê |
+|---|---|---|
+| `assistant_messages` | Histórico do chat (texto + resposta estruturada em `payload`), por canal | Só o próprio usuário (apagável) |
+| `assistant_sessions` | Estado da conversa (aguardando confirmação/escolha), expira em 15 min | Só o próprio usuário |
+| `assistant_actions` | Cada gravação do assistente: lote (`batch_id`), intenção, **mensagem original**, registro criado, como desfazer, provedor | Só o próprio usuário; auditada |
+| `category_rules` | Regras aprendidas "texto → categoria" | Membros do espaço |
+| `assistant_usage` | Contador de chamadas de IA por usuário/dia/provedor | Leitura do próprio; escrita só pela função |
+
+`entry_source` ganhou `assistant`. Função `assistant_take_quota(provedor, limite_dia, limite_minuto)` — atômica,
+devolve `allowed`/`used_today`/`reason`. Job `limpar-assistente` (pg_cron) limpa sessões e uso antigos.
+
 ### Ciclo de vida da conta (migration 0005)
 `transfer_workspace_ownership`, `get_account_deletion_blockers`, `delete_my_account` (ADR-0013).
 

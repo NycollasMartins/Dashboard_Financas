@@ -34,6 +34,11 @@ Supabase (Postgres 17, Auth, RLS, **pg_cron**) · Zod 4 · Vitest 5 · pgTAP · 
   cálculos puros em `src/lib/goals/math.ts`.
 - **Projeção** (ADR-0017): `private.projected_occurrences` gera ocorrências virtuais após `last_generated_on`
   (até 36 meses); `analytics_entries` inclui por padrão (`is_projected`). Mês atual nunca muda.
+- **Assistente (Fase 5)**: a IA **só interpreta** (ADR-0018). Fluxo: `interpret` (parser local → Gemini → Groq →
+  local) → `resolveItem` (ids/perguntas) → `executor` (APIs internas, `source='assistant'`, `assistant_actions`
+  com a mensagem original) → resposta por template. Ponto de entrada de TODO canal: `handleAssistant`
+  (`src/lib/assistant/server/engine.ts`). Ao provedor só vão texto + data/hora + NOMES (ADR-0019, `prompt.ts`).
+- Lançamentos passam pela API interna `src/lib/ledger/service.ts` (telas e assistente).
 - Regras de data (fatura, parcelas, recorrência, competência×caixa, projeção) existem **em SQL e em TS** (`src/lib/domain`) com os
   **mesmos casos de teste** — mudou um, mude o outro.
 - Recorrências: geradas por trigger na criação + pg_cron diário (`gerar-recorrencias`, 03:00 BRT), idempotentes.
@@ -47,7 +52,8 @@ src/app/(auth)/            entrar, cadastro, recuperar/redefinir senha, convite/
 src/app/(app)/             painel, lancamentos, cartoes(/[id]), contas, recorrencias, categorias, familia, configuracoes, mais
 src/app/(app)/painel/      dashboard: blocos async com <Suspense>; load.ts deduplica RPCs com cache()
 src/app/(app)/metas/       metas + detalhe [id];  planejamento/ = sobra, compromissos, distribuição
-src/app/(app)/_actions/    server actions finas (ledger.ts, goals.ts, preferences.ts)
+src/app/(app)/assistente/  chat do assistente (canal "app"); actions em _actions/assistant.ts
+src/app/(app)/_actions/    server actions finas (ledger.ts, goals.ts, assistant.ts, preferences.ts)
 src/components/dashboard/  KPIs, gráficos HTML/SVG (sem lib), toolbar de filtros (router.push), insights
 src/components/privacy/    PrivacyProvider + PrivacyToggle (ocultar valores)
 src/components/goals/      anel, cartão, gráfico, simulador, contribution-form (guardar/retirar), celebração
@@ -55,13 +61,15 @@ src/components/ledger/     entry-sheet (provider leve) + entry-form (carregado s
 src/components/ui/         shadcn + sheet.tsx (folha inferior no celular)
 src/lib/domain/            regras puras (invoice.ts, recurrence.ts, basis.ts, projection.ts) + testes
 src/lib/goals/             math.ts (puro, testado) + service.ts (API interna de metas)
+src/lib/ledger/service.ts  API interna de lançamentos
+src/lib/assistant/         parser local, money/dates, contrato Zod, providers/, eval/ (169+40 msgs), server/ (motor)
 src/lib/analytics/         período, variação/tom, categorias, insights (puros, testados)
 src/lib/data/              consultas server-only (ledger.ts, analytics.ts)
-supabase/migrations/       0001 núcleo · 0002 financeiro · 0003 canais · 0004 membros · 0005 conta · 0006 Fase 2 · 0007 analytics · 0008 metas+projeção
-supabase/tests/database/   pgTAP (206 asserções)   ·   supabase/seed.sql: ana/bruno/caio + 12 meses de demonstração
+supabase/migrations/       0001 núcleo · 0002 financeiro · 0003 canais · 0004 membros · 0005 conta · 0006 Fase 2 · 0007 analytics · 0008 metas+projeção · 0009 assistente
+supabase/tests/database/   pgTAP (224 asserções)   ·   supabase/seed.sql: ana/bruno/caio + 12 meses de demonstração
 e2e/                       Playwright: auth, conta, lançamentos, checagens iOS, screenshots do README
 scripts/                   dev-lan.mjs (celular no Wi-Fi), generate-icons.mjs (ícones PWA)
-docs/                      requisitos, modelo-de-dados, adr/ (0001–0017), api-interna, design-system, roadmap, setup-manual, images/
+docs/                      requisitos, modelo-de-dados, adr/ (0001–0019), api-interna, design-system, roadmap, setup-manual, images/
 ```
 
 ## Convenções obrigatórias
@@ -83,6 +91,7 @@ docs/                      requisitos, modelo-de-dados, adr/ (0001–0017), api-
   biblioteca de gráficos; primeira dobra sem fade de opacidade (LCP). Regras em `docs/design-system.md`.
 - Filtros de tela que precisam do botão voltar: `router.push` (não `replace`).
 - SVG repetido na página: **sem ids** (`<defs>`/gradientes quebram quando uma cópia está oculta).
+- Nada de valores/saldos/e-mails no prompt da IA: só `buildUserPayload` monta o que sai (ADR-0019).
 - Segredos só em `.env.local`/Vercel; arquivo que lê segredo começa com `import "server-only"`.
 - Commits pequenos, **Conventional Commits em pt-BR** (`feat(escopo): …`); push ao fim de cada etapa com
   testes passando; **nunca force push na main**.
@@ -91,7 +100,9 @@ docs/                      requisitos, modelo-de-dados, adr/ (0001–0017), api-
 | Comando | O quê |
 |---|---|
 | `pnpm dev` / `pnpm dev:lan` | Servidor local / acessível no celular pelo Wi-Fi |
-| `pnpm check` | typecheck + lint + Vitest + pgTAP |
+| `pnpm check` | typecheck + lint + Vitest + pgTAP + integração (precisa do db:start) |
+| `pnpm test:integration` | Assistente mensagem → banco (Supabase local) |
+| `pnpm eval:assistant` | Acurácia do parser local; `EVAL_PROVIDER=gemini\|groq` mede a IA real (gasta cota) |
 | `pnpm test:e2e` (`:ios`, `:ui`) | Playwright: desktop + iPhone 15 + iPhone SE + Android |
 | `pnpm screenshots` | Regera `docs/images/*` (rode após `pnpm db:reset`) |
 | `pnpm db:start / stop / reset / types` | Supabase local |
@@ -113,7 +124,8 @@ docs/                      requisitos, modelo-de-dados, adr/ (0001–0017), api-
       gráficos, insights por regra, filtros na URL, ocultar valores, Lighthouse a11y 100 / perf 95 (throttling real)
 - [x] **Fase 4** — Metas (aportes/retiradas, aporte planejado, conclusão), cálculos (mensal necessário, ritmo
       ponderado, estimativa), simulador, Planejamento, motor de projeção 36 meses, lista na visão caixa
-- [ ] Fase 5 — IA (Gemini + Groq atrás de `AiParser`)
+- [x] **Fase 5** — Assistente no app: parser local + Gemini/Groq (só interpretam), 10 intenções, confirmação/perguntas,
+      desfazer, aprendizado de categoria, consultas pelo banco, cota; motor por canal pronto p/ Fase 6
 - [ ] Fase 6 — WhatsApp Cloud API + Telegram (adapters)
 - [ ] Fase 7 — Importação CSV/OFX + leitura de prints
 - [ ] Fase 8 — PWA completo (service worker), CSP, retenção do audit_log, deploy final
@@ -121,5 +133,7 @@ docs/                      requisitos, modelo-de-dados, adr/ (0001–0017), api-
 ## Pendências conhecidas
 - iOS Simulator/iPhone físico ainda não validados (emulação WebKit cobre layout; ver ADR-0012).
 - Meta com imagem própria (upload): adiado; hoje ícone + cor.
+- Acurácia do Gemini/Groq reais não medida (sem chave); holdout cego do parser local: 77,5% de intenção.
+- Novo vocabulário do assistente: adicionar ao `eval/dataset.ts` ANTES de mexer no parser (e manter o HOLDOUT intocado).
 - Lighthouse "simulado" dá LCP ~4 s (modelo pessimista); com throttling real 2,3 s.
 - `audit_log` sem retenção (Fase 8).

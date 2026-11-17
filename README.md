@@ -6,7 +6,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178c6?logo=typescript&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-Postgres%2017%20%2B%20RLS-3ecf8e?logo=supabase&logoColor=white)
 ![Tailwind](https://img.shields.io/badge/Tailwind-4.3-38bdf8?logo=tailwindcss&logoColor=white)
-![Status](https://img.shields.io/badge/status-Fase%204%20conclu%C3%ADda-5eead4)
+![Status](https://img.shields.io/badge/status-Fase%205%20conclu%C3%ADda-5eead4)
 ![Licença](https://img.shields.io/badge/licen%C3%A7a-todos%20os%20direitos%20reservados-lightgrey)
 
 Controle de receitas, despesas, cartões de crédito, faturas, parcelamentos, contas fixas e **metas** — para uma
@@ -30,6 +30,7 @@ o celular (lançar um gasto leva 3 toques) e com **custo zero** de infraestrutur
 | Metas | ![](docs/images/desktop-metas.png) | ![](docs/images/iphone-metas.png) |
 | Meta (detalhe + simulador) | ![](docs/images/desktop-meta.png) | ![](docs/images/iphone-meta.png) |
 | Planejamento | ![](docs/images/desktop-planejamento.png) | ![](docs/images/iphone-planejamento.png) |
+| Assistente | ![](docs/images/desktop-assistente.png) | ![](docs/images/iphone-assistente.png) |
 | Guardar para meta | ![](docs/images/desktop-guardar-meta.png) | ![](docs/images/iphone-guardar-meta.png) |
 | Cartões | ![](docs/images/desktop-cartoes.png) | ![](docs/images/iphone-cartoes.png) |
 | Fatura | ![](docs/images/desktop-fatura.png) | ![](docs/images/iphone-fatura.png) |
@@ -148,8 +149,18 @@ alternando entre eles com um toque.
 - ✅ Lista de lançamentos na **visão caixa** (compras pelo vencimento da fatura) e com as projeções dos meses
   futuros: soma exatamente o que o painel mostra.
 
+**Assistente que entende mensagens (Fase 5)**
+- ✅ Tela **Assistente** (e atalho no botão +): escreva "gastei 50 no uber", "comprei uma TV de 3000 em 10x no
+  nubank", "guardei 300 pra viagem", "paguei o aluguel", "quanto gastei com mercado?", "desfazer".
+- ✅ Despesa, receita, compra parcelada, transferência, guardar/retirar de meta, confirmar previsto, consultas
+  (gastos, receitas, saldo, fatura, meta, quanto falta guardar, resumo), desfazer e ajuda; vários lançamentos numa mensagem.
+- ✅ Valores como "50 conto", "1k", "mil e duzentos"; datas como "ontem", "sexta passada", "dia 5".
+- ✅ Pergunta quando falta algo ou há dúvida (ex.: cartão Nubank ou Conta Nubank?), com opções.
+- ✅ Grava direto o que é simples e seguro (com **Desfazer**); pede confirmação com cartão editável no resto.
+- ✅ **Aprende**: corrigiu a categoria de "padaria do zé"? Na próxima já vem certa.
+- ✅ Funciona **sem IA** (parser local) e usa Gemini/Groq só nas mensagens difíceis — veja [o que é enviado](#assistente-o-que-vai-para-a-ia).
+
 ### 🔜 Planejado (ver [roadmap](docs/roadmap.md))
-- 🔜 **Fase 5** – IA que entende mensagens ("gastei 50 no Uber no crédito do Nubank").
 - 🔜 **Fase 6** – Bot no WhatsApp (API oficial) e Telegram.
 - 🔜 **Fase 7** – Importação de extratos CSV/OFX e leitura de prints de notificação.
 - 🔜 **Fase 8** – PWA completo (offline), CSP, retenção da auditoria, deploy final.
@@ -287,7 +298,9 @@ erDiagram
 - **Reautenticação**: trocar e-mail e excluir a conta pedem a senha atual.
 - **Agregados do painel** em funções `SECURITY INVOKER`: rodam com a sessão de quem pede, então a RLS
   vale também para somas e médias — uma família nunca vê números de outra (testado).
-- **Testes de isolamento**: 206 asserções pgTAP (inclui "estranho não vê nada", "membro não promove a si
+- **Assistente**: a IA só interpreta; validação por schema, gravação pelas mesmas APIs das telas, chaves só no
+  servidor, cota por usuário e rate limit (ADR-0018/0019). Detalhes logo abaixo.
+- **Testes de isolamento**: 224 asserções pgTAP (inclui "estranho não vê nada", "membro não promove a si
   mesmo", "não dá para mover lançamento de espaço").
 
 **Matriz de permissões**
@@ -308,6 +321,25 @@ erDiagram
 (sem valores reais) é versionado. Variáveis `NEXT_PUBLIC_*` vão para o navegador — **nunca** coloque
 segredos nelas. Arquivos que leem segredos começam com `import "server-only"`. Headers de segurança
 (HSTS, X-Frame-Options, nosniff, Referrer-Policy, Permissions-Policy) em `next.config.ts`.
+
+### Assistente: o que vai para a IA
+
+> **Aviso de privacidade.** A maioria das mensagens é entendida **dentro do app** (parser local), sem enviar nada
+> para fora. Só quando o app não tem certeza ele pergunta ao Google Gemini (ou ao Groq, se o Gemini falhar).
+> **No plano gratuito do Gemini, o Google pode usar o texto enviado para melhorar os produtos, e pessoas podem
+> revisá-lo.** Não escreva dados sensíveis (senhas, números de cartão) no assistente.
+
+| Enviado ao provedor | **Nunca** enviado |
+|---|---|
+| O texto da mensagem (até 500 caracteres) | Saldos, valores do histórico, faturas |
+| Data e hora atuais (São Paulo) | E-mails, nomes de pessoas da família |
+| **Nomes** das categorias, contas, cartões e metas do espaço | Ids, tokens, chaves, qualquer outro dado |
+
+- As respostas de consulta ("quanto gastei com mercado?") são **calculadas pelo banco do app** e escritas por
+  modelo de texto do sistema — a IA só identifica a pergunta.
+- Tudo é montado num único lugar (`src/lib/assistant/prompt.ts#buildUserPayload`), fácil de auditar.
+- Sem chaves configuradas (ou com `ASSISTANT_AI_ENABLED=false`), **nada** sai do app.
+- O histórico do chat é seu (ninguém da família vê) e pode ser apagado na própria tela.
 
 ## 7. Estrutura de pastas
 
@@ -333,6 +365,7 @@ segredos nelas. Arquivos que leem segredos começam com `import "server-only"`. 
 │   │   │   │                  #   categorias, família, configurações, mais
 │   │   │   ├── painel/        #   Dashboard (blocos com Suspense + load.ts com cache)
 │   │   │   ├── metas/         #   Metas e detalhe (/metas/[id]); planejamento/ = sobra e distribuição
+│   │   │   ├── assistente/    #   Chat do assistente (canal "app")
 │   │   │   └── _actions/      #   Server Actions (lançamentos, preferências)
 │   │   ├── auth/confirm/      # Destino dos links de e-mail (token_hash)
 │   │   ├── layout.tsx         # Fontes, tema, metadados PWA/iOS
@@ -341,6 +374,7 @@ segredos nelas. Arquivos que leem segredos começam com `import "server-only"`. 
 │   │   ├── app-shell/         # Sidebar, barra inferior, seletor de espaço, menu do usuário
 │   │   ├── dashboard/         # KPIs, gráficos (HTML/SVG), filtros, insights, listas
 │   │   ├── goals/             # Anel, cartão, gráfico, simulador, guardar/retirar, celebração
+│   │   ├── assistant/         # Chat (bolhas, cartão de confirmação, opções, desfazer)
 │   │   ├── privacy/           # Ocultar valores (ícone de olho)
 │   │   ├── ledger/            # Lançamento rápido (formulário sob demanda), listas, formulários
 │   │   ├── forms/             # Campos acessíveis e botão de envio
@@ -349,6 +383,8 @@ segredos nelas. Arquivos que leem segredos começam com `import "server-only"`. 
 │   │   ├── domain/            # Regras puras: fatura, recorrência, competência × caixa (+ testes)
 │   │   ├── analytics/         # Período, variação, categorias, insights do painel (+ testes)
 │   │   ├── goals/             # math.ts (cálculos puros) + service.ts (API interna p/ telas, IA e bot)
+│   │   ├── ledger/            # service.ts — API interna de lançamentos (telas e assistente)
+│   │   ├── assistant/         # parser local, contrato (Zod), provedores IA, avaliação; server/ = motor de conversa
 │   │   ├── data/              # Consultas server-only (ledger.ts, analytics.ts)
 │   │   ├── supabase/          # Clientes (servidor/proxy), tipos gerados, retry de relógio
 │   │   ├── validation/        # Schemas Zod
@@ -356,7 +392,7 @@ segredos nelas. Arquivos que leem segredos começam com `import "server-only"`. 
 │   │   └── …                  # sessão, erros, contexto do espaço
 │   └── proxy.ts               # Antigo middleware: sessão + redirecionamentos
 ├── supabase/
-│   ├── migrations/            # 0001–0008 (schema, RLS, funções, pg_cron, analytics, metas + projeção)
+│   ├── migrations/            # 0001–0009 (schema, RLS, funções, pg_cron, analytics, metas + projeção, assistente)
 │   ├── tests/database/        # pgTAP
 │   ├── templates/             # E-mails em pt-BR
 │   ├── seed.sql               # Usuários de teste + 12 meses de demonstração (só local)
@@ -419,7 +455,11 @@ Copie `.env.example` para `.env.local` e preencha.
 | `NEXT_PUBLIC_SUPABASE_URL` | pública | Endereço da API do Supabase | Local: `supabase status` (API_URL); nuvem: *Project Settings → API Keys* |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | pública | Chave publicável (`sb_publishable_…`); a segurança vem da RLS | Local: `supabase status` (PUBLISHABLE_KEY); nuvem: *API Keys* |
 | `SUPABASE_SECRET_KEY` | **secreta** | Service role, só para o webhook do bot (Fase 6). **Nunca** com `NEXT_PUBLIC_` | *API Keys → Secret keys* |
-| `GEMINI_API_KEY` / `GROQ_API_KEY` | **secretas** | IA (Fase 5) | Google AI Studio / console.groq.com |
+| `GEMINI_API_KEY` / `GROQ_API_KEY` | **secretas** | IA do assistente (opcional; sem elas usa só o parser local) | Google AI Studio / console.groq.com — passo a passo em `docs/setup-manual.md` §E |
+| `GEMINI_MODEL` / `GROQ_MODEL` | servidor | Modelos (padrão `gemini-3.1-flash-lite` / `openai/gpt-oss-20b`) | — |
+| `ASSISTANT_AI_DAILY_LIMIT` / `ASSISTANT_AI_PER_MINUTE` | servidor | Cota por usuário/dia/provedor (40) e por minuto (8) | — |
+| `ASSISTANT_CONFIRM_ABOVE_CENTS` | servidor | Acima deste valor sempre pede confirmação (100000 = R$ 1.000) | — |
+| `ASSISTANT_AI_ENABLED` | servidor | `false` desliga a IA (tudo local) | — |
 | `WHATSAPP_*`, `TELEGRAM_*` | **secretas** | Bots (Fase 6) | Meta for Developers / @BotFather |
 
 ## 10. Rodando localmente e scripts
@@ -476,12 +516,35 @@ pnpm dev                 # http://localhost:3000
 
 | Tipo | Comando | Cobre |
 |---|---|---|
-| Unitários (Vitest) | `pnpm test` | Centavos (`parseBRL`, `formatBRL`, parcelas), datas em São Paulo (inclusive perto da meia-noite e na virada do ano), regra da fatura, recorrências, competência × caixa, período do painel, variação e cor semântica, categorias, insights, redirecionamento seguro, retry de relógio, metas (mensal necessário com juros, ritmo ponderado, estimativa, capacidade, distribuição, simulador, corte por categoria), motor de projeção — **137 testes** |
-| Banco (pgTAP) | `pnpm test:db` | Isolamento entre usuários e famílias, papéis, convites, posse/exclusão de conta, faturas, parcelas (ano seguinte, centavos ímpares, fevereiro), recorrências idempotentes, saldos, pagamentos, limite, categorias, auditoria; painel: competência × caixa (somam igual no período fechado), mês vazio, só previstos, parcelas cruzando o ano, fatura paga parcialmente, vários membros, saldo projetado e RLS entre famílias; metas: aporte não é despesa (nada contado duas vezes), retirada com motivo e limite, conclusão automática, aporte planejado idempotente, projeção (mês atual = Fase 3, 36 meses, nada gravado) e RLS — **206 asserções** |
+| Unitários (Vitest) | `pnpm test` | Centavos (`parseBRL`, `formatBRL`, parcelas), datas em São Paulo (inclusive perto da meia-noite e na virada do ano), regra da fatura, recorrências, competência × caixa, período do painel, variação e cor semântica, categorias, insights, redirecionamento seguro, retry de relógio, metas (mensal necessário com juros, ritmo ponderado, estimativa, capacidade, distribuição, simulador, corte por categoria), motor de projeção, assistente (valores, datas, parser, resolvedor, pipeline com IA simulada, avaliação) — **200 testes** |
+| Banco (pgTAP) | `pnpm test:db` | Isolamento entre usuários e famílias, papéis, convites, posse/exclusão de conta, faturas, parcelas (ano seguinte, centavos ímpares, fevereiro), recorrências idempotentes, saldos, pagamentos, limite, categorias, auditoria; painel: competência × caixa (somam igual no período fechado), mês vazio, só previstos, parcelas cruzando o ano, fatura paga parcialmente, vários membros, saldo projetado e RLS entre famílias; metas: aporte não é despesa (nada contado duas vezes), retirada com motivo e limite, conclusão automática, aporte planejado idempotente, projeção (mês atual = Fase 3, 36 meses, nada gravado) e RLS; assistente: histórico/sessão/ações só do dono, regras por família, cota atômica e rate limit — **224 asserções** |
+| Integração (Vitest + Supabase local) | `pnpm test:integration` | Assistente de ponta a ponta: mensagem → interpretação → API interna → banco (grava, confirma, pergunta, aprende categoria, consulta, desfaz) — **8 cenários** |
+| Avaliação do assistente | `pnpm eval:assistant` | Parser local contra 169 + 40 mensagens; com `EVAL_PROVIDER=gemini` ou `groq`, mede a IA real (fora do CI, gasta cota) |
 | E2E (Playwright) | `pnpm test:e2e` | Login/validações, cadastro → confirmação → troca de e-mail → exclusão, lançamento em 3 toques, parcelado, desfazer, pagar fatura, recorrência, categoria com reatribuição; painel (filtros na URL + voltar, visões, ocultar valores, tabela, vazio, clique → lista); regressão da 1ª compra parcelada; metas (3 toques, retirada com motivo, conclusão e celebração, simulador, planejamento), lista na visão caixa e projeções, campo de valor; checagens iOS |
 | iOS/mobile | `pnpm test:e2e:ios` | Sem rolagem horizontal, barra inferior fixa com alvos ≥ 44 px, safe area, fonte ≥ 16 px (sem zoom do iOS), `inputmode="decimal"`, `100dvh`, meta tags PWA e `apple-touch-icon`, folha de lançamento cabe na tela |
 
 No **CI** (GitHub Actions) tudo isso roda a cada push na `main` e em cada pull request.
+
+### Assistente: acurácia medida e uso de cota
+
+| Camada / conjunto | Mensagens | Intenção | Caso inteiro | Cobertura confiante | Precisão quando confiante |
+|---|---|---|---|---|---|
+| Parser local — conjunto principal | 169 | 100% | 100% | 96,4% | 100% |
+| Parser local — **holdout, 1ª medição (cego)** | 40 | **77,5%** | 75% | 77,5% | **87,1%** |
+| Parser local — holdout após correções | 40 | 100% | 100% | 87,5% | 100% |
+| Gemini / Groq reais | 169 | **pendente da chave** | — | — | — |
+
+**Leia com cuidado:** o conjunto principal foi escrito junto com o parser (viés a favor). O número mais honesto é a
+**1ª medição do holdout** (40 frases escritas depois): 77,5% de intenção. As correções que vieram depois são regras
+gerais (ex.: "botei 70 de gasolina" é gasto, não meta), mas o holdout deixou de ser cego. O app guarda as mensagens
+reais no histórico de cada pessoa — a melhor próxima avaliação é com frases suas. Quando o parser não tem
+confiança, a mensagem vai para a IA (com chave) ou vira pergunta/confirmação (sem chave): **nada é gravado no
+escuro**. Medir a IA real: `EVAL_PROVIDER=gemini EVAL_LIMIT=40 pnpm eval:assistant`.
+
+**Cota estimada para uma família de 2 a 5 pessoas** (≈ 6–10 mensagens/pessoa/dia = 12–50 por dia):
+o parser local resolve ~78–88% sozinho → **≈ 2–11 chamadas de IA por dia para a família toda**
+(≈ 1–3 por pessoa). O limite gratuito do Gemini 3.1 Flash-Lite (~500/dia **por projeto**) e o do Groq (~1.000/dia)
+sobram muito; o limite por usuário do app (40/dia) só protege contra abuso.
 
 ### Desempenho (Lighthouse, celular)
 Medido em `/painel` com build de produção, logado, dados do seed (12 meses), Lighthouse 12.8, perfil móvel
@@ -622,6 +685,13 @@ Se essa data passar do prazo, a meta fica "Atrasada"; antes, "Adiantada".
 **Projeção.** Meses futuros são calculados a partir das **regras** (recorrências ativas, parcelas e faturas), até
 36 meses, sem criar lançamentos no banco. O mês atual é sempre igual ao que já está lançado.
 
+**Assistente: quando ele grava sozinho e quando pergunta.** Mensagem simples e clara ("gastei 50 no uber") com
+valor até R$ 1.000 é gravada na hora, com botão **Desfazer**. Ele **pede confirmação** quando a mensagem tem
+vários lançamentos, quando precisou da IA, quando não tem certeza (ex.: não achou a categoria) ou quando o valor é
+alto. Ele **pergunta** quando falta algo (valor, cartão, conta) ou quando um nome serve para duas coisas
+("no nubank": cartão ou conta?). "Paguei o aluguel" sem valor confirma o aluguel **previsto**. "Desfazer" apaga
+o último registro feito pelo assistente (até 24 h).
+
 **Arredondamento e dinheiro.** Tudo é guardado em **centavos inteiros**, nunca com casas decimais "quebradas"
 de computador (0,1 + 0,2 ≠ 0,3 em ponto flutuante). Datas usam sempre o horário de São Paulo.
 
@@ -658,11 +728,14 @@ de computador (0,1 + 0,2 ≠ 0,3 em ponto flutuante). Datas usam sempre o horár
 
 ## 18. Roadmap, limitações, custos, changelog e licença
 
-**Roadmap**: Fases 0–4 ✅ · Fase 5 (IA) ⏭️ · Fases 6–8 planejadas — detalhes em
+**Roadmap**: Fases 0–5 ✅ · Fase 6 (WhatsApp/Telegram) ⏭️ · Fases 7–8 planejadas — detalhes em
 [`docs/roadmap.md`](docs/roadmap.md).
 
 **Limitações conhecidas**
 - Validação em iOS Simulator e iPhone físico ainda pendente (a emulação WebKit cobre o layout).
+- Acurácia do Gemini/Groq reais ainda não medida (precisa da sua chave). O parser local é otimista no conjunto
+  principal; o holdout cego deu 77,5% de intenção.
+- Assistente: estornos no cartão, edição de lançamentos existentes por mensagem e leitura de prints (Fase 7) não são suportados.
 - Comparação com a média de 3 meses só na visão por mês.
 - Meta com imagem própria (upload) ficou para depois: hoje é ícone + cor (evita custo/armazenamento agora).
 - O ritmo de uma meta usa meses fechados: aportes do mês atual mudam "falta" e "por mês", e entram no ritmo no mês seguinte.
@@ -679,9 +752,14 @@ de computador (0,1 + 0,2 ≠ 0,3 em ponto flutuante). Datas usam sempre o horár
 | Brevo | ~300 e-mails/dia | Mais que suficiente |
 | Domínio próprio | Não é necessário | Opcional (~R$ 40/ano) |
 | WhatsApp (Fase 6) | Respostas a mensagens do usuário são gratuitas | Número dedicado pode ter custo de linha |
-| IA (Fase 5) | Gemini/Groq com cotas gratuitas que mudam com frequência | Monitorar limites |
+| Gemini (Fase 5) | ~500 pedidos/dia no 3.1 Flash-Lite (por projeto); dados do gratuito podem ser usados pelo Google | Sem cartão cadastrado não há cobrança; o app cai para Groq/local |
+| Groq (Fase 5) | ~30/min e ~1.000/dia (varia por modelo) | Idem |
 
 **Changelog resumido**
+- **Fase 5** — assistente no app: parser local + Gemini/Groq atrás de interface (a IA só interpreta), 10 intenções,
+  vários itens por mensagem, perguntas com opções, confirmação editável, desfazer em lote, aprendizado de
+  categoria, consultas calculadas pelo banco, histórico apagável, cota e rate limit, aviso de privacidade; API
+  interna de lançamentos; avaliação com 209 mensagens; testes de integração no CI.
 - **Fase 4** — metas (individuais/família) com aportes, retiradas, aporte planejado, conclusão e celebração;
   cálculos de mensal necessário, ritmo ponderado, data estimada e status; simulador "e se" e corte por categoria;
   Planejamento (sobra, compromissos, inviabilidade, distribuição); "guardado em metas" no painel; motor de
