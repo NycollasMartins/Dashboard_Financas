@@ -26,7 +26,11 @@
     "eval:assistant": "vitest run --config vitest.eval.config.mts",
     "telegram": "node scripts/telegram.mjs",
     "vapid": "node scripts/vapid.mjs",
-    "test:smoke": "playwright test --project=smoke"
+    "test:smoke": "playwright test --project=smoke",
+    "env:gen": "node scripts/prod-secrets.mjs gen",
+    "env:copy": "node scripts/prod-secrets.mjs copy",
+    "backup:prod": "bash scripts/backup-db.sh prod",
+    "backup:local": "bash scripts/backup-db.sh local"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

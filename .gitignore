@@ -54,3 +54,6 @@ supabase/.temp
 /playwright-report/
 /blob-report/
 /e2e/.auth/
+
+# Backups do banco (dados financeiros e de login — NUNCA commitar)
+backups/
