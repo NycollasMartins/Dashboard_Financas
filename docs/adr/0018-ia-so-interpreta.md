@@ -32,6 +32,11 @@ não pode depender disso.
 8. **Aprendizado**: quando a pessoa corrige a categoria no cartão de confirmação, o sistema grava uma regra
    (`category_rules`, por espaço) e o parser local passa a usá-la — sem IA.
 
+9. **A IA não faz contas, nem nos valores** (revisão de 17/11/2026, após a medição real): todo valor devolvido
+   pela IA precisa aparecer escrito na mensagem (`dropInventedAmounts`). Motivo: o Gemini dividiu
+   "netflix e spotify 77,80" em 38,90 + 38,90. Valor fora do texto vira null → o sistema pergunta.
+10. **Tempo limite por provedor** (Gemini 6 s, Groq 5 s): o gratuito do Gemini teve p95 de 13 s.
+
 ## Alternativas rejeitadas
 - **IA com "function calling" gravando direto**: o modelo decidiria quando gravar; difícil de auditar e de proteger.
 - **Só IA** (sem parser local): gasta cota, depende de rede e envia mais dados para fora.

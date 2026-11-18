@@ -1,7 +1,7 @@
 import type { ISODate } from "@/lib/dates";
 import { findPeriod, parseDateValue } from "./dates";
 import { CONFIDENT, parseLocal } from "./local-parser";
-import { parseAmount } from "./money";
+import { findAmounts, parseAmount } from "./money";
 import { normalize } from "./normalize";
 import type { AiParser } from "./providers/types";
 import { aiOutputSchema, type AiItem, type Interpretation, type NameContext, type ParsedItem } from "./types";
@@ -54,6 +54,31 @@ export function normalizeAiItem(it: AiItem, text: string, today: ISODate, names:
   };
 }
 
+/**
+ * A IA NÃO FAZ CONTAS (ADR-0018): todo valor que ela devolver precisa estar
+ * escrito na mensagem ("netflix e spotify 77,80" → ela não pode dividir em
+ * 38,90 + 38,90). Valor que não aparece no texto vira null → o sistema pergunta.
+ */
+export function dropInventedAmounts(items: ParsedItem[], text: string) {
+  const written = new Set(findAmounts(normalize(text)).map((a) => a.cents));
+  for (const it of items) if (it.amountCents != null && !written.has(it.amountCents)) it.amountCents = null;
+}
+
+/**
+ * Rede de segurança determinística: se a IA deixou valor/data em branco e o
+ * parser local extraiu esse campo do MESMO item (mesma quantidade de itens),
+ * usa o do parser. Não sobrescreve o que a IA preencheu.
+ */
+export function fillFromLocal(ai: ParsedItem[], local: ParsedItem[]) {
+  if (ai.length !== local.length) return;
+  ai.forEach((it, i) => {
+    if (it.intent === "consultar" || it.intent === "ajuda" || it.intent === "desfazer_ultimo" || it.intent === "confirmar_previsto") return;
+    it.amountCents ??= local[i].amountCents;
+    it.date ??= local[i].date;
+    it.installments ??= local[i].installments;
+  });
+}
+
 export async function interpret(text: string, deps: InterpretDeps): Promise<Interpretation> {
   const local = parseLocal(text, deps.today, deps.names);
   if (local.confidence >= CONFIDENT) return local;
@@ -72,7 +97,7 @@ export async function interpret(text: string, deps: InterpretDeps): Promise<Inte
       }
     }
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), deps.timeoutMs ?? 8000);
+    const timer = setTimeout(() => ctrl.abort(), p.timeoutMs ?? deps.timeoutMs ?? 8000);
     try {
       const raw = await p.parse({ text, nowLocal: deps.nowLocal, names: deps.names }, ctrl.signal);
       const parsed = aiOutputSchema.safeParse(raw);
@@ -81,8 +106,8 @@ export async function interpret(text: string, deps: InterpretDeps): Promise<Inte
         continue;
       }
       const items = parsed.data.items.map((it) => normalizeAiItem(it, text, deps.today, deps.names));
-      // A IA não pode "inventar" valor: se ela trouxer valor e o texto não tiver número algum, descarta o valor.
-      for (const it of items) if (it.amountCents && !/\d|mil|cem|cento|vinte|trinta|quarenta|cinquenta|sessenta|setenta|oitenta|noventa|dez|cinco|quinze/.test(normalize(text))) it.amountCents = null;
+      dropInventedAmounts(items, text);
+      fillFromLocal(items, local.items);
       return { items, confidence: 0.85, provider: p.name, notes };
     } catch (e) {
       notes.push(`${p.name}:erro${e instanceof Error && "status" in e ? `-${(e as { status: unknown }).status}` : ""}`);

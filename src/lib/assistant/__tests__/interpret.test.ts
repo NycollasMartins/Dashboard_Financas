@@ -78,3 +78,45 @@ describe("pipeline de interpretação", () => {
     expect(r.notes).toContain("fallback:local");
   });
 });
+
+describe("rede de segurança: valor/data do parser local", () => {
+  it("IA deixa o valor em branco → usa o valor que o parser local achou no mesmo item", async () => {
+    const ai = new MockParser({
+      "dei 50 pro flanelinha": { items: [{ intent: "registrar_despesa", amount: null, description: "Flanelinha", category: "Transporte" }] },
+    });
+    const r = await interpret("dei 50 pro flanelinha", deps([ai]));
+    expect(r.provider).toBe("mock");
+    expect(r.items[0]).toMatchObject({ amountCents: 5000, category: "Transporte" });
+  });
+
+  it("não sobrescreve o que a IA preencheu (data), nem completa quando o número de itens difere", async () => {
+    const ai = new MockParser({
+      "dei 50 pro flanelinha": { items: [
+        { intent: "registrar_despesa", amount: 50, description: "Flanelinha", date: "2026-11-10" },
+        { intent: "registrar_despesa", amount: null, description: "Outro" },
+      ] },
+    });
+    const r = await interpret("dei 50 pro flanelinha", deps([ai]));
+    expect(r.items.map((i) => i.amountCents)).toEqual([5000, null]);
+    expect(r.items[0].date).toBe("2026-11-10");
+  });
+});
+
+describe("a IA não faz contas", () => {
+  it("valor que não está escrito na mensagem é descartado (o sistema pergunta)", async () => {
+    const ai = new MockParser({
+      "netflix e spotify 77,80": { items: [
+        { intent: "registrar_despesa", amount: 38.9, description: "Netflix", category: "Assinaturas" },
+        { intent: "registrar_despesa", amount: 38.9, description: "Spotify", category: "Assinaturas" },
+      ] },
+    });
+    const r = await interpret("netflix e spotify 77,80", deps([ai]));
+    if (r.provider === "mock") expect(r.items.every((i) => i.amountCents === null)).toBe(true);
+  });
+
+  it("valor escrito por extenso ou com 'k' é aceito", async () => {
+    const ai = new MockParser({ "coisinha de mil e duzentos na lojinha": { items: [{ intent: "registrar_despesa", amount: 1200, description: "Lojinha" }] } });
+    const r = await interpret("coisinha de mil e duzentos na lojinha", deps([ai]));
+    expect(r.items[0].amountCents).toBe(120000);
+  });
+});

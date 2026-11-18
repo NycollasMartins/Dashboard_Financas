@@ -532,19 +532,37 @@ No **CI** (GitHub Actions) tudo isso roda a cada push na `main` e em cada pull r
 | Parser local — conjunto principal | 169 | 100% | 100% | 96,4% | 100% |
 | Parser local — **holdout, 1ª medição (cego)** | 40 | **77,5%** | 75% | 77,5% | **87,1%** |
 | Parser local — holdout após correções | 40 | 100% | 100% | 87,5% | 100% |
-| Gemini / Groq reais | 169 | **pendente da chave** | — | — | — |
+| Gemini 3.1 Flash-Lite **sozinho** — conjunto principal (prompt sem exemplos) | 169 | 97,6% | 94,7% | 100% | 94,7% |
+| Gemini **sozinho** — holdout (prompt final) | 40 | 85% | 82,5% | 87,5% | **94,3%** |
+| Groq gpt-oss-20b **sozinho** — conjunto principal | 169 | 92,3% | 79,9% | 100% | 79,9% |
+| **Pipeline real** (local → Gemini) — holdout | 40 | **100%** | 100% | 97,5% | 100% |
+
+*Medido em 17/11/2026 com `EVAL_PROVIDER=gemini|groq pnpm eval:assistant` (IA real, fora do CI).*
 
 **Leia com cuidado:** o conjunto principal foi escrito junto com o parser (viés a favor). O número mais honesto é a
 **1ª medição do holdout** (40 frases escritas depois): 77,5% de intenção. As correções que vieram depois são regras
 gerais (ex.: "botei 70 de gasolina" é gasto, não meta), mas o holdout deixou de ser cego. O app guarda as mensagens
 reais no histórico de cada pessoa — a melhor próxima avaliação é com frases suas. Quando o parser não tem
 confiança, a mensagem vai para a IA (com chave) ou vira pergunta/confirmação (sem chave): **nada é gravado no
-escuro**. Medir a IA real: `EVAL_PROVIDER=gemini EVAL_LIMIT=40 pnpm eval:assistant`.
+escuro**. Medir a IA real: `EVAL_PROVIDER=gemini EVAL_SET=holdout pnpm eval:assistant`.
+
+**O que a medição real mostrou (e o que foi corrigido):**
+- **Gemini entende bem** (94% de acerto nas respostas que chegam), mas no gratuito é **instável**: mediana 3,1 s,
+  p95 13 s, e 5 de 40 chamadas falharam (4 por tempo, 1 erro 503). No holdout, os 5 "erros" do Gemini são isso.
+  → Tempo limite por provedor: **Gemini 6 s, depois Groq 5 s** (pior caso ≈ 7 s em vez de 16 s).
+- **A IA tentou fazer conta**: "netflix e spotify 77,80" virou 38,90 + 38,90. → Regra no sistema: **todo valor da
+  IA precisa estar escrito na mensagem**; se não estiver, vira pergunta (ADR-0018).
+- **Groq** (reserva): no padrão o modelo "pensava" até esgotar a resposta (JSON vazio) e estourava 8.000 tokens/min
+  → `reasoning_effort: "low"` (≈ 1/5 dos tokens). Erra mais categoria (77%) e trata "paguei 120 de luz" como conta
+  prevista — aceitável como reserva, já que o sistema confirma tudo que vem da IA.
+- Prompt ganhou 6 exemplos e 3 regras gerais (frases diferentes das do conjunto de avaliação); se a IA deixa
+  valor/data/parcelas em branco e o parser local achou, o sistema completa.
 
 **Cota estimada para uma família de 2 a 5 pessoas** (≈ 6–10 mensagens/pessoa/dia = 12–50 por dia):
 o parser local resolve ~78–88% sozinho → **≈ 2–11 chamadas de IA por dia para a família toda**
 (≈ 1–3 por pessoa). O limite gratuito do Gemini 3.1 Flash-Lite (~500/dia **por projeto**) e o do Groq (~1.000/dia)
-sobram muito; o limite por usuário do app (40/dia) só protege contra abuso.
+sobram muito; o limite por usuário do app (40/dia) só protege contra abuso. No Groq, o limite que pesa é o de
+**tokens**: 8.000/min e 200.000/dia no gpt-oss-20b ≈ 150 chamadas/dia (cada uma ≈ 1.300 tokens) — ainda folgado.
 
 ### Desempenho (Lighthouse, celular)
 Medido em `/painel` com build de produção, logado, dados do seed (12 meses), Lighthouse 12.8, perfil móvel
@@ -733,8 +751,7 @@ de computador (0,1 + 0,2 ≠ 0,3 em ponto flutuante). Datas usam sempre o horár
 
 **Limitações conhecidas**
 - Validação em iOS Simulator e iPhone físico ainda pendente (a emulação WebKit cobre o layout).
-- Acurácia do Gemini/Groq reais ainda não medida (precisa da sua chave). O parser local é otimista no conjunto
-  principal; o holdout cego deu 77,5% de intenção.
+- Gemini gratuito é instável em alguns horários (503/lentidão); o app corta em 6 s e passa ao Groq/parser local.
 - Assistente: estornos no cartão, edição de lançamentos existentes por mensagem e leitura de prints (Fase 7) não são suportados.
 - Comparação com a média de 3 meses só na visão por mês.
 - Meta com imagem própria (upload) ficou para depois: hoje é ícone + cor (evita custo/armazenamento agora).

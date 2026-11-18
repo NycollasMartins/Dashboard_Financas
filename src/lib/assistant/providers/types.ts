@@ -16,6 +16,8 @@ export type AiInput = {
 export interface AiParser {
   readonly name: "gemini" | "groq" | "mock";
   readonly supportsImages: boolean;
+  /** Tempo máximo de espera (ms) antes de tentar o próximo provedor. */
+  readonly timeoutMs?: number;
   /** true se a chave estiver configurada no servidor. */
   available(): boolean;
   /** Devolve o JSON CRU do modelo (o sistema valida com Zod). Lança em erro/timeout. */

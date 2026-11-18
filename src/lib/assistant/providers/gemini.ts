@@ -9,6 +9,8 @@ import { ProviderError, type AiInput, type AiParser } from "./types";
  */
 export class GeminiParser implements AiParser {
   readonly name = "gemini" as const;
+  /** mediana medida 3,1 s; p95 13 s no gratuito → corta e passa ao Groq. */
+  readonly timeoutMs = 6000;
   readonly supportsImages = true;
   private readonly key = process.env.GEMINI_API_KEY ?? "";
   private readonly model = process.env.GEMINI_MODEL || "gemini-3.1-flash-lite";

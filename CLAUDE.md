@@ -133,7 +133,9 @@ docs/                      requisitos, modelo-de-dados, adr/ (0001–0019), api-
 ## Pendências conhecidas
 - iOS Simulator/iPhone físico ainda não validados (emulação WebKit cobre layout; ver ADR-0012).
 - Meta com imagem própria (upload): adiado; hoje ícone + cor.
-- Acurácia do Gemini/Groq reais não medida (sem chave); holdout cego do parser local: 77,5% de intenção.
+- IA real medida (17/11/2026): Gemini sozinho 94% de precisão nas respostas, mas instável no gratuito (p95 13 s,
+  503) → timeout por provedor (Gemini 6 s, Groq 5 s). Groq: 80% caso inteiro (reserva). Valor da IA que não está
+  escrito na mensagem é descartado (`dropInventedAmounts`). Holdout cego do parser local: 77,5%.
 - Novo vocabulário do assistente: adicionar ao `eval/dataset.ts` ANTES de mexer no parser (e manter o HOLDOUT intocado).
 - Lighthouse "simulado" dá LCP ~4 s (modelo pessimista); com throttling real 2,3 s.
 - `audit_log` sem retenção (Fase 8).
