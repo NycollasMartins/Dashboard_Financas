@@ -15,18 +15,20 @@ test("sino mostra não lidas; tocar abre a tela certa e marca como lida", async 
   const uid = await userId(USERS.ana.email);
   await localAdmin().from("notifications").insert({
     user_id: uid, kind: "invoice_due", event_key: `${KEY}:${info.project.name}`,
-    title: "Fatura do Nubank vence amanhã", body: "A pagar: R$ 1.234,56", url: "/cartoes",
+    title: `Teste E2E ${KEY}`, body: "A pagar: R$ 1.234,56", url: "/cartoes",
   });
   await page.goto("/painel");
-  const bell = page.getByRole("link", { name: /Notificações: 1 não lida/ }).filter({ visible: true });
+  // Pode haver outras não lidas (o pg_cron gera notificações reais do seed).
+  const bell = page.getByRole("link", { name: /Notificações: \d+ não lidas?/ }).filter({ visible: true }).first();
   await expect(bell).toBeVisible();
   await bell.click();
   await expect(page).toHaveURL(/\/notificacoes/);
-  const item = page.getByRole("button", { name: /Fatura do Nubank vence amanhã/ });
+  const item = page.getByRole("button", { name: new RegExp(`Teste E2E ${KEY}`) });
   await expect(item).toHaveAttribute("data-unread", "true");
   await item.click();
   await expect(page).toHaveURL(/\/cartoes/);
-  await expect(page.getByRole("link", { name: "Notificações", exact: true }).filter({ visible: true }).first()).toBeVisible();
+  const { data } = await localAdmin().from("notifications").select("read_at").like("event_key", `${KEY}%`).single();
+  expect(data?.read_at).not.toBeNull();
 });
 
 test("preferências por tipo e canal ficam salvas; horário de silêncio", async ({ page }) => {
@@ -44,7 +46,7 @@ test("preferências por tipo e canal ficam salvas; horário de silêncio", async
   }).toBe(false);
   await page.reload();
   await expect(page.getByRole("switch", { name: "Resumo semanal: ligado" })).toHaveAttribute("aria-checked", "false");
-  await page.getByLabel("De").fill("23:00");
+  await page.getByLabel("De", { exact: true }).fill("23:00");
   await page.getByRole("button", { name: "Salvar horário" }).click();
   await expect(page.getByText("Horário de silêncio salvo.")).toBeVisible();
 });
