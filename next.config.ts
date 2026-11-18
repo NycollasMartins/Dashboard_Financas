@@ -41,6 +41,8 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   // Imagem Docker enxuta: só o servidor e as dependências usadas (ADR-0020).
   output: "standalone",
+  // Foto (já reduzida no aparelho) e áudio de até 60 s no Assistente (Fase 6).
+  experimental: { serverActions: { bodySizeLimit: "4mb" } },
   cacheComponents: true,
   partialPrefetching: true,
   poweredByHeader: false,

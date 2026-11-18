@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { toast } from "sonner";
-import { Check, ChevronDown, Loader2, Pencil, SendHorizontal, ShieldCheck, Sparkles, Trash2, Undo2, X } from "lucide-react";
+import { Camera, Check, ChevronDown, ImagePlus, Loader2, Mic, Pencil, SendHorizontal, ShieldCheck, Sparkles, Square, Trash2, Undo2, X } from "lucide-react";
 import { clearAssistantHistoryAction, sendAssistantAction, type ChatMessage } from "@/app/(app)/_actions/assistant";
 import { celebrateGoal } from "@/components/goals/celebration";
 import { MoneyInput } from "@/components/ledger/money-input";
@@ -10,6 +10,7 @@ import { Money } from "@/components/money";
 import { Button } from "@/components/ui/button";
 import type { ChatReply, PendingCard } from "@/lib/assistant/server/engine";
 import { cn } from "@/lib/utils";
+import { compressImage, MAX_AUDIO_SECONDS, pickAudioMime, startRecording, type Recording } from "./media";
 
 const SUGGESTIONS = [
   "gastei 50 no uber",
@@ -23,6 +24,7 @@ const SUGGESTIONS = [
 ];
 
 type Send = (input: Record<string, unknown>) => void;
+const noopSubscribe = () => () => {};
 
 /**
  * Chat do assistente (canal "app"). Toda a lógica está no motor de conversa
@@ -40,8 +42,9 @@ export function AssistantChat({ initial, aiConfigured }: { initial: ChatMessage[
 
   const send: Send = (input) =>
     start(async () => {
-      const optimistic: ChatMessage = { id: `tmp-${Date.now()}`, role: "user", body: String(input.label ?? input.text ?? "…"), createdAt: new Date().toISOString() };
-      if (input.kind === "text") setMessages((m) => [...m, optimistic]);
+      const body = input.kind === "image" ? "📷 Foto enviada" : input.kind === "audio" ? `🎤 Áudio (${input.seconds} s)` : String(input.label ?? input.text ?? "…");
+      const optimistic: ChatMessage = { id: `tmp-${Date.now()}`, role: "user", body, createdAt: new Date().toISOString() };
+      if (input.kind === "text" || input.kind === "image" || input.kind === "audio") setMessages((m) => [...m, optimistic]);
       const res = await sendAssistantAction(input);
       if (!res.ok) {
         toast.error(res.message);
@@ -52,6 +55,56 @@ export function AssistantChat({ initial, aiConfigured }: { initial: ChatMessage[
       const celebrate = res.messages.find((x) => x.reply?.done?.celebrate)?.reply?.done?.celebrate;
       if (celebrate) celebrateGoal(celebrate);
     });
+
+  // ---- Foto (câmera/galeria) e áudio
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
+  const [photoMenu, setPhotoMenu] = useState(false);
+  const [recording, setRecording] = useState<Recording | null>(null);
+  const [recSeconds, setRecSeconds] = useState(0);
+  // Microfone disponível? (no servidor: não; no navegador: confere o MediaRecorder)
+  const canRecord = useSyncExternalStore(
+    noopSubscribe,
+    () => Boolean(navigator.mediaDevices?.getUserMedia) && pickAudioMime() !== "",
+    () => false,
+  );
+  useEffect(() => {
+    if (!recording) return;
+    const t = setInterval(() => setRecSeconds((x) => x + 1), 1000);
+    return () => clearInterval(t);
+  }, [recording]);
+
+  const onPhoto = async (file: File | undefined) => {
+    setPhotoMenu(false);
+    if (!file) return;
+    try {
+      const img = await compressImage(file);
+      send({ kind: "image", ...img });
+    } catch {
+      toast.error("Não consegui abrir essa imagem. Tente outra foto ou um print.");
+    }
+  };
+  const recordingRef = useRef<Recording | null>(null);
+  const stopRecording = async () => {
+    const r = recordingRef.current;
+    if (!r) return;
+    recordingRef.current = null;
+    setRecording(null);
+    const audio = await r.stop();
+    if (audio) send({ kind: "audio", ...audio });
+    else toast.error("Áudio muito curto.");
+  };
+  const toggleMic = async () => {
+    if (recording) return stopRecording();
+    try {
+      const r = await startRecording(() => void stopRecording());
+      recordingRef.current = r;
+      setRecSeconds(0);
+      setRecording(r);
+    } catch {
+      toast.error("Não consegui usar o microfone. Libere o acesso nas permissões do navegador.");
+    }
+  };
 
   // Só a última leva de respostas é interativa (cartões antigos ficam "congelados").
   const lastUser = messages.map((m) => m.role).lastIndexOf("user");
@@ -90,6 +143,25 @@ export function AssistantChat({ initial, aiConfigured }: { initial: ChatMessage[
             </button>
           ))}
         </div>
+        {photoMenu && (
+          <div className="grid grid-cols-2 gap-2" role="menu" aria-label="Enviar foto">
+            <Button type="button" variant="secondary" className="h-12" role="menuitem" onClick={() => cameraRef.current?.click()}><Camera /> Tirar foto</Button>
+            <Button type="button" variant="secondary" className="h-12" role="menuitem" onClick={() => galleryRef.current?.click()}><ImagePlus /> Imagem ou print</Button>
+          </div>
+        )}
+        {/* capture="environment": no iPhone abre a câmera traseira direto. */}
+        <input ref={cameraRef} type="file" accept="image/*" capture="environment" hidden data-testid="photo-camera"
+          onChange={(e) => { void onPhoto(e.target.files?.[0]); e.target.value = ""; }} />
+        <input ref={galleryRef} type="file" accept="image/png,image/jpeg,image/webp,image/heic" hidden data-testid="photo-file"
+          onChange={(e) => { void onPhoto(e.target.files?.[0]); e.target.value = ""; }} />
+        {recording && (
+          <div className="flex h-12 items-center gap-3 rounded-2xl border border-destructive/40 bg-destructive/10 px-4 text-sm" role="status">
+            <span className="size-2.5 animate-pulse rounded-full bg-destructive" aria-hidden />
+            Gravando… {recSeconds}s / {MAX_AUDIO_SECONDS}s
+            <button type="button" className="ml-auto grid size-11 place-items-center rounded-xl text-muted-foreground hover:bg-accent" aria-label="Cancelar gravação"
+              onClick={() => { recording.cancel(); recordingRef.current = null; setRecording(null); }}><X className="size-5" /></button>
+          </div>
+        )}
         <form
           className="flex items-end gap-2"
           onSubmit={(e) => {
@@ -116,9 +188,21 @@ export function AssistantChat({ initial, aiConfigured }: { initial: ChatMessage[
             placeholder="Ex.: gastei 45,90 no ifood ontem"
             className="h-12 min-w-0 flex-1 rounded-2xl border border-input bg-card px-4 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           />
-          <Button type="submit" size="icon-lg" className="size-12 rounded-2xl" aria-label="Enviar">
-            {pending ? <Loader2 className="animate-spin" /> : <SendHorizontal />}
+          <Button type="button" size="icon-lg" variant="secondary" className="size-12 rounded-2xl" aria-label="Enviar foto de comprovante"
+            aria-expanded={photoMenu} disabled={Boolean(recording)} onClick={() => setPhotoMenu((v) => !v)}>
+            <Camera />
           </Button>
+          {canRecord && !text && (
+            <Button type="button" size="icon-lg" variant={recording ? "destructive" : "secondary"} className="size-12 rounded-2xl"
+              aria-label={recording ? "Parar e enviar áudio" : "Gravar áudio"} onClick={() => void toggleMic()}>
+              {recording ? <Square /> : <Mic />}
+            </Button>
+          )}
+          {(!canRecord || text) && (
+            <Button type="submit" size="icon-lg" className="size-12 rounded-2xl" aria-label="Enviar">
+              {pending ? <Loader2 className="animate-spin" /> : <SendHorizontal />}
+            </Button>
+          )}
         </form>
       </div>
     </div>
@@ -142,6 +226,11 @@ function PrivacyNote({ aiConfigured, onClear }: { aiConfigured: boolean; onClear
           Nunca envio saldos, valores do seu histórico, e-mails ou nomes de pessoas. Respostas como “quanto gastei” são calculadas pelo
           banco do app, não pela IA. No plano gratuito do Google Gemini, o Google pode usar o texto enviado para melhorar os produtos
           (e pessoas podem revisá-lo) — evite escrever dados sensíveis.
+        </p>
+        <p>
+          <b>Fotos e áudios:</b> a imagem vai para o Google Gemini e o áudio para o Groq (transcrição), só para ler o comprovante ou o que
+          você falou. O arquivo <b>não é guardado</b> — fica só o lançamento, com “origem: foto/áudio”. Não extraímos nem gravamos CPF,
+          CNPJ ou outros dados pessoais do comprovante. Evite fotografar documentos.
         </p>
         <button type="button" onClick={onClear} className="flex h-9 w-fit items-center gap-1.5 rounded-lg px-2 font-medium text-destructive hover:bg-destructive/10">
           <Trash2 className="size-3.5" /> Apagar histórico da conversa
@@ -206,6 +295,7 @@ function ConfirmCard({ card, interactive, send }: { card: PendingCard; interacti
   return (
     <div className="grid gap-3 rounded-2xl border bg-card p-3" role="group" aria-label="Confirmar lançamentos">
       <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">Espaço: {card.workspaceName}</p>
+      {card.media && <p className="rounded-xl bg-surface-2/60 px-3 py-2 text-xs whitespace-pre-wrap" data-testid="media-summary">{card.media.summary}</p>}
       <ul className="grid gap-2">
         {card.items.map((it) => (
           <li key={it.index} className="grid gap-2 rounded-xl bg-surface-2/50 px-3 py-2">
@@ -250,6 +340,12 @@ function ConfirmCard({ card, interactive, send }: { card: PendingCard; interacti
           </Button>
           {!editing && <Button variant="outline" onClick={() => setEditing(true)}><Pencil /> Editar</Button>}
           <Button variant="ghost" onClick={() => send({ kind: "cancel", pendingId: card.pendingId })}><X /> Cancelar</Button>
+          {card.extras?.map((o) => (
+            <Button key={o.value} variant="outline" className="h-auto min-h-11 whitespace-normal text-left"
+              onClick={() => send({ kind: "choose", pendingId: card.pendingId, value: o.value, label: o.label })}>
+              {o.label}
+            </Button>
+          ))}
         </div>
       )}
     </div>

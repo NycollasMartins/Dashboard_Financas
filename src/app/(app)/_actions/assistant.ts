@@ -29,6 +29,9 @@ const inputSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("cancel"), pendingId: z.uuid() }),
   z.object({ kind: z.literal("choose"), pendingId: z.uuid(), value: z.string().min(1).max(200), label: z.string().max(200).optional() }),
   z.object({ kind: z.literal("undo"), batchId: z.uuid().optional() }),
+  // Fase 6: foto (reduzida no aparelho) e áudio curto. Base64; limites conferidos de novo no motor.
+  z.object({ kind: z.literal("image"), mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]), base64: z.string().min(100).max(5_500_000).regex(/^[A-Za-z0-9+/=]+$/) }),
+  z.object({ kind: z.literal("audio"), mimeType: z.string().regex(/^audio\/[\w.+-]+(;\s*codecs=[\w.]+)?$/).max(60), base64: z.string().min(100).max(3_500_000).regex(/^[A-Za-z0-9+/=]+$/), seconds: z.number().int().min(1).max(120) }),
 ]);
 
 export type ChatMessage = { id: string; role: "user" | "assistant"; body: string; reply?: ChatReply; createdAt: string };
@@ -40,6 +43,8 @@ function userLabel(input: z.infer<typeof inputSchema>) {
     case "cancel": return "Cancelar";
     case "choose": return input.label ?? "Escolhi uma opção";
     case "undo": return "Desfazer";
+    case "image": return "📷 Foto enviada";
+    case "audio": return `🎤 Áudio (${input.seconds} s)`;
   }
 }
 
@@ -53,14 +58,19 @@ export async function sendAssistantAction(raw: unknown): Promise<{ ok: true; mes
 
   const { data: userRow, error: e1 } = await supabase
     .from("assistant_messages")
-    .insert({ role: "user", body: userLabel(input).slice(0, 4096), workspace_id: active.id, channel: "app" })
+    .insert({
+      role: "user", body: userLabel(input).slice(0, 4096), workspace_id: active.id, channel: "app",
+      input_kind: input.kind === "image" ? "photo" : input.kind === "audio" ? "audio" : "text",
+    })
     .select("id, created_at")
     .single();
   if (e1) return { ok: false, message: "Não consegui registrar a mensagem." };
 
   let replies: ChatReply[];
   try {
-    const engineInput = (input.kind === "choose" ? { kind: "choose", pendingId: input.pendingId, value: input.value } : input) as ChatInput;
+    const engineInput = (input.kind === "choose" ? { kind: "choose", pendingId: input.pendingId, value: input.value }
+      : input.kind === "audio" ? { ...input, filename: input.mimeType.includes("mp4") ? "audio.m4a" : input.mimeType.includes("ogg") ? "audio.ogg" : "audio.webm" }
+      : input) as ChatInput;
     replies = await handleAssistant(
       { supabase, userId: user.id, channel: "app", activeWorkspaceId: active.id, workspaces: workspaces.map((w) => ({ id: w.id, kind: w.kind, name: w.name })) },
       engineInput,
