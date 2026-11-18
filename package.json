@@ -23,7 +23,8 @@
     "test:e2e:ui": "playwright test --ui",
     "screenshots": "playwright test --project=screenshots",
     "test:integration": "vitest run --config vitest.integration.config.mts",
-    "eval:assistant": "vitest run --config vitest.eval.config.mts"
+    "eval:assistant": "vitest run --config vitest.eval.config.mts",
+    "telegram": "node scripts/telegram.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
