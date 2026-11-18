@@ -1,20 +1,23 @@
-# Finanças — dashboard financeiro pessoal e familiar
+# Lar+ ("Lar Mais") — finanças da casa e da família
 
 @AGENTS.md
 
 ## Visão
 App privado (casal → família) para controlar receitas, despesas, cartões, metas e lançar gastos por
-mensagem (WhatsApp/Telegram + IA). **Custo zero** é requisito: avise antes de qualquer coisa paga.
+mensagem (**só Telegram** — WhatsApp fora por custo, ADR-0021) com texto, foto e áudio + IA.
+Marca **Lar+**; identificadores técnicos `larmais`. Produção: **https://larmais.tech** (EasyPanel/Docker na VPS do
+dono, ADR-0020); bot **@LarMaisBot**. Supabase de produção: **o dono aplica** (nunca execute nada contra produção). **Custo zero** é requisito: avise antes de qualquer coisa paga.
 O usuário é dev júnior: explique decisões e liste passos manuais. Textos de UI e docs em **pt-BR**.
 Uso principal no **iPhone** → todo trabalho de UI é validado em iPhone 15, iPhone SE e Android 360×800.
 
 Repositório: https://github.com/NycollasMartins/Dashboard_Financas (**privado**). CI: 2.000 min/mês no Free.
-Vercel Hobby com repo privado só publica commits cujo autor é o dono (ver `docs/setup-manual.md` §D).
+Deploy: EasyPanel faz build do `Dockerfile` a cada push na `main` (roteiro completo em `docs/setup-manual.md`).
 
 ## Stack
 Next.js 16.4 (App Router, Turbopack, **Cache Components + Partial Prefetching**) · React 19.3 · TypeScript 5.9 ·
 Tailwind 4.3 · shadcn/ui `base-nova` (**Base UI**, não Radix: `render={<X/>}` em vez de `asChild`) ·
-Supabase (Postgres 17, Auth, RLS, **pg_cron**) · Zod 4 · Vitest 5 · pgTAP · Playwright 1.65 (WebKit) · Vercel.
+Supabase (Postgres 17, Auth, RLS, **pg_cron**, **pg_net**, Vault) · Zod 4 · Vitest 5 · pgTAP · Playwright 1.65 (WebKit) ·
+Docker (`output: standalone`) · Telegram Bot API · web-push (VAPID) · qrcode.
 
 ## Arquitetura (resumo — detalhes em `docs/`)
 - **Workspace** = espaço `personal` (1 por usuário) ou `household` (família). Todo dado financeiro tem
@@ -39,6 +42,16 @@ Supabase (Postgres 17, Auth, RLS, **pg_cron**) · Zod 4 · Vitest 5 · pgTAP · 
   com a mensagem original) → resposta por template. Ponto de entrada de TODO canal: `handleAssistant`
   (`src/lib/assistant/server/engine.ts`). Ao provedor só vão texto + data/hora + NOMES (ADR-0019, `prompt.ts`).
 - Lançamentos passam pela API interna `src/lib/ledger/service.ts` (telas e assistente).
+- **Telegram (Fase 6, ADR-0021)**: `src/lib/telegram/` só traduz update ↔ `handleAssistant`. Webhook
+  (`webhook.ts`): secret_token em tempo constante → `telegram_updates` (idempotência por `update_id`) → 200 →
+  `after()`. Grava com a **sessão do usuário dono do chat** (`session.ts`: generateLink+verifyOtp em memória);
+  a secret key só acha o vínculo/idempotência/anti-flood. Só chat privado; um chat por usuário.
+- **Fotos/áudio (ADR-0022)**: `ChatInput` `image`/`audio` no motor. `media/receipt.ts` (puro: schema, `scrubPII`,
+  validação, dividir por categoria). Foto SEMPRE confirma; áudio = Whisper (Groq) → mesmo fluxo do texto.
+  Nada de arquivo guardado; auditoria com `input_kind` e a extração/transcrição.
+- **Notificações (ADR-0023)**: geradas no banco (pg_cron 15 min + triggers), `unique(user_id, event_key)`; fila
+  `notification_deliveries` → `/api/notifications/dispatch` (pg_net + `x-cron-secret`/Vault) → Web Push/Telegram,
+  retentativa e dead-letter (`ops_dead_letters`). `public/sw.js` só push. iPhone: só com o app na Tela de Início.
 - Regras de data (fatura, parcelas, recorrência, competência×caixa, projeção) existem **em SQL e em TS** (`src/lib/domain`) com os
   **mesmos casos de teste** — mudou um, mude o outro.
 - Recorrências: geradas por trigger na criação + pg_cron diário (`gerar-recorrencias`, 03:00 BRT), idempotentes.
@@ -52,7 +65,9 @@ src/app/(auth)/            entrar, cadastro, recuperar/redefinir senha, convite/
 src/app/(app)/             painel, lancamentos, cartoes(/[id]), contas, recorrencias, categorias, familia, configuracoes, mais
 src/app/(app)/painel/      dashboard: blocos async com <Suspense>; load.ts deduplica RPCs com cache()
 src/app/(app)/metas/       metas + detalhe [id];  planejamento/ = sobra, compromissos, distribuição
-src/app/(app)/assistente/  chat do assistente (canal "app"); actions em _actions/assistant.ts
+src/app/(app)/assistente/  chat do assistente (canal "app": texto, foto, microfone); actions em _actions/assistant.ts
+src/app/(app)/notificacoes/ central · configuracoes/canais (Telegram) · configuracoes/notificacoes (push/prefs/silêncio)
+src/app/api/               health · telegram/webhook · notifications/dispatch (autenticam por segredo, fora do proxy)
 src/app/(app)/_actions/    server actions finas (ledger.ts, goals.ts, assistant.ts, preferences.ts)
 src/components/dashboard/  KPIs, gráficos HTML/SVG (sem lib), toolbar de filtros (router.push), insights
 src/components/privacy/    PrivacyProvider + PrivacyToggle (ocultar valores)
@@ -62,13 +77,16 @@ src/components/ui/         shadcn + sheet.tsx (folha inferior no celular)
 src/lib/domain/            regras puras (invoice.ts, recurrence.ts, basis.ts, projection.ts) + testes
 src/lib/goals/             math.ts (puro, testado) + service.ts (API interna de metas)
 src/lib/ledger/service.ts  API interna de lançamentos
-src/lib/assistant/         parser local, money/dates, contrato Zod, providers/, eval/ (169+40 msgs), server/ (motor)
+src/lib/assistant/         parser local, money/dates, contrato Zod, providers/, media/, eval/ (173+40 msgs, fotos, áudios), server/ (motor)
+src/lib/telegram/          adapter do bot (webhook, update, render, session, api) · src/lib/notifications/ (kinds, push, dispatch)
 src/lib/analytics/         período, variação/tom, categorias, insights (puros, testados)
 src/lib/data/              consultas server-only (ledger.ts, analytics.ts)
-supabase/migrations/       0001 núcleo · 0002 financeiro · 0003 canais · 0004 membros · 0005 conta · 0006 Fase 2 · 0007 analytics · 0008 metas+projeção · 0009 assistente
-supabase/tests/database/   pgTAP (224 asserções)   ·   supabase/seed.sql: ana/bruno/caio + 12 meses de demonstração
-e2e/                       Playwright: auth, conta, lançamentos, checagens iOS, screenshots do README
-scripts/                   dev-lan.mjs (celular no Wi-Fi), generate-icons.mjs (ícones PWA)
+supabase/migrations/       0001 núcleo · … · 0008 metas+projeção · 0009 assistente · 0010 Telegram+mídia+notificações
+supabase/tests/database/   pgTAP (251 asserções)   ·   supabase/seed.sql: ana/bruno/caio + 12 meses de demonstração
+e2e/                       Playwright: auth, conta, lançamentos, iOS, canais, notificações, smoke (produção), screenshots
+scripts/                   dev-lan · brand (marca Lar+) · telegram (webhook) · vapid · generate-media-eval (fotos/áudios sintéticos)
+public/                    brand/ (logos, foto do bot) · icons/ · splash/ (iPhone) · sw.js (push)
+Dockerfile                 multi-stage, sem root, HEALTHCHECK /api/health
 docs/                      requisitos, modelo-de-dados, adr/ (0001–0019), api-interna, design-system, roadmap, setup-manual, images/
 ```
 
@@ -92,7 +110,12 @@ docs/                      requisitos, modelo-de-dados, adr/ (0001–0019), api-
 - Filtros de tela que precisam do botão voltar: `router.push` (não `replace`).
 - SVG repetido na página: **sem ids** (`<defs>`/gradientes quebram quando uma cópia está oculta).
 - Nada de valores/saldos/e-mails no prompt da IA: só `buildUserPayload` monta o que sai (ADR-0019).
-- Segredos só em `.env.local`/Vercel; arquivo que lê segredo começa com `import "server-only"`.
+- Segredos só em `.env.local`/EasyPanel; arquivo que lê segredo começa com `import "server-only"`. Nunca peça token/chave no chat.
+- Rotas `/api/*` não passam pelo `proxy.ts`; autenticam por segredo comparado com `safeEqual` (tempo constante).
+- Secret key (`createAdminClient`) **nunca** grava dado financeiro: use `createUserClient(userId)` (Telegram).
+- Logs sem conteúdo de mensagem/valores; imagens e áudios nunca são persistidos; nada de CPF/CNPJ extraído.
+- Marca: desenhos em `scripts/brand-mark.mjs` (rode `pnpm brand`); o `LogoMark` repete os caminhos com tokens.
+- CSP sem nonce (PPR, ADR-0020): não use `dangerouslySetInnerHTML` com dado do usuário.
 - Commits pequenos, **Conventional Commits em pt-BR** (`feat(escopo): …`); push ao fim de cada etapa com
   testes passando; **nunca force push na main**.
 
@@ -101,8 +124,10 @@ docs/                      requisitos, modelo-de-dados, adr/ (0001–0019), api-
 |---|---|
 | `pnpm dev` / `pnpm dev:lan` | Servidor local / acessível no celular pelo Wi-Fi |
 | `pnpm check` | typecheck + lint + Vitest + pgTAP + integração (precisa do db:start) |
-| `pnpm test:integration` | Assistente mensagem → banco (Supabase local) |
-| `pnpm eval:assistant` | Acurácia do parser local; `EVAL_PROVIDER=gemini\|groq` mede a IA real (gasta cota) |
+| `pnpm test:integration` | Assistente e webhook do Telegram → banco (Supabase local; Telegram simulado) |
+| `pnpm test:smoke` | Smoke contra produção (`E2E_BASE_URL=https://larmais.tech`, `SMOKE_EMAIL/PASSWORD`) |
+| `pnpm telegram set\|delete\|info` · `pnpm vapid` · `pnpm brand` | Webhook do bot · chaves VAPID · identidade visual |
+| `pnpm eval:assistant` | Acurácia do parser local; `EVAL_PROVIDER=gemini\|groq` (texto) e `EVAL_MEDIA=photos\|audio` + caminho `src/lib/assistant/eval/media.eval.ts` (IA real, gasta cota) |
 | `pnpm test:e2e` (`:ios`, `:ui`) | Playwright: desktop + iPhone 15 + iPhone SE + Android |
 | `pnpm screenshots` | Regera `docs/images/*` (rode após `pnpm db:reset`) |
 | `pnpm db:start / stop / reset / types` | Supabase local |
@@ -126,11 +151,15 @@ docs/                      requisitos, modelo-de-dados, adr/ (0001–0019), api-
       ponderado, estimativa), simulador, Planejamento, motor de projeção 36 meses, lista na visão caixa
 - [x] **Fase 5** — Assistente no app: parser local + Gemini/Groq (só interpretam), 10 intenções, confirmação/perguntas,
       desfazer, aprendizado de categoria, consultas pelo banco, cota; motor por canal pronto p/ Fase 6
-- [ ] Fase 6 — WhatsApp Cloud API + Telegram (adapters)
-- [ ] Fase 7 — Importação CSV/OFX + leitura de prints
-- [ ] Fase 8 — PWA completo (service worker), CSP, retenção do audit_log, deploy final
+- [x] **Fase 6** — Lar+ (marca), produção EasyPanel/Docker + CSP, Telegram (@LarMaisBot), fotos e áudio (Telegram e
+      app), notificações (push/Telegram/central), smoke test; IA real medida (texto, fotos 100% sintético, áudio 92%)
+- [ ] Fase 7 — Importação CSV/OFX
+- [ ] Fase 8 — PWA offline, revisão da CSP (SRI), retenção do audit_log, backups
 
 ## Pendências conhecidas
+- Push em iPhone real, bot de produção e Supabase de produção: dependem do dono (roteiro em `docs/setup-manual.md`).
+- Fotos/áudios medidos com dados sintéticos; medir com cupons/vozes reais. Groq gpt-oss-20b: 200 mil tokens/dia.
+- Para testar o webhook localmente use um **bot de desenvolvimento** (um bot só tem um webhook) + Cloudflare Tunnel.
 - iOS Simulator/iPhone físico ainda não validados (emulação WebKit cobre layout; ver ADR-0012).
 - Meta com imagem própria (upload): adiado; hoje ícone + cor.
 - IA real medida (17/11/2026): Gemini sozinho 94% de precisão nas respostas, mas instável no gratuito (p95 13 s,

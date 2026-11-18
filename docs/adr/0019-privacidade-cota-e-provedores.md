@@ -19,7 +19,7 @@
 3. **Cota** (`assistant_take_quota`, atômica no banco): por **usuário/dia/provedor** (`ASSISTANT_AI_DAILY_LIMIT`,
    padrão 40) e **rate limit por minuto** (`ASSISTANT_AI_PER_MINUTE`, padrão 8). Sem cota → próximo provedor →
    parser local. O parser local não consome cota.
-4. **Chaves só no servidor** (`GEMINI_API_KEY`, `GROQ_API_KEY` em `.env.local`/Vercel), em arquivos com
+4. **Chaves só no servidor** (`GEMINI_API_KEY`, `GROQ_API_KEY` em `.env.local`/EasyPanel), em arquivos com
    `import "server-only"`. `ASSISTANT_AI_ENABLED=false` desliga a IA (tudo local).
 5. **Aviso de privacidade** curto na tela do assistente + seção no README.
 6. **Imagens**: a interface `AiParser` já aceita imagens (Gemini é multimodal), mas nenhuma tela envia nesta

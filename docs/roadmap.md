@@ -12,7 +12,7 @@
 | 7 | Importação CSV/OFX e leitura de prints | Planejada |
 | 8 | PWA, testes finais, deploy e hardening | Planejada |
 
-> O deploy em produção (Supabase em nuvem + Vercel) pode ser feito **já** ao fim da Fase 1, seguindo
+> O deploy em produção (Supabase em nuvem + EasyPanel/Docker — ADR-0020) pode ser feito **já** ao fim da Fase 1, seguindo
 > `docs/setup-manual.md`. A Fase 8 trata do hardening final, não do primeiro deploy.
 
 ## Entregue além do planejado
@@ -60,21 +60,23 @@
 - Motor de conversa por canal com estado no banco; tela Assistente; aprendizado de categoria; desfazer em lote.
 - API interna de lançamentos extraída (telas e assistente usam a mesma).
 - Avaliação: 169 mensagens + holdout de 40; integração mensagem → banco; pgTAP; E2E em 4 dispositivos.
-- **Pendente da chave:** medir a acurácia do Gemini/Groq reais (`pnpm eval:assistant`).
+- Acurácia da IA real medida em 18/11/2026 (README §12).
 
-## Fase 6 · WhatsApp + Telegram (próxima)
-- Route Handlers `/api/webhooks/whatsapp` e `/api/webhooks/telegram`: verificação de assinatura,
-  idempotência, rate limit, resposta em < 5 s (processamento com `after()`).
-- Vinculação por código no painel (Configurações → WhatsApp/Telegram).
-- **Aceite:** webhook com assinatura inválida → 401; mesma mensagem duas vezes → um lançamento só.
+## Fase 6 · Lar+: Telegram, fotos, áudio, notificações e produção ✅
+- Identidade **Lar+** (logo, ícones PWA/maskable, telas de abertura do iPhone, foto do bot, e-mails).
+- Produção: EasyPanel (Docker standalone, sem root, healthcheck) em `larmais.tech`, CSP/HSTS, smoke test (ADR-0020).
+- **Somente Telegram** (WhatsApp fora por custo): webhook com `secret_token`, idempotência, vinculação por código/QR,
+  comandos, teclados inline, sessão do próprio usuário (ADR-0021).
+- **Fotos** (cupom/NFC-e, recibo, notificação de cartão, Pix, fatura) e **áudio** (Whisper) no Telegram e no app (ADR-0022).
+- **Notificações**: Web Push (VAPID), Telegram e central no app; pg_cron + fila com retentativas e dead-letter (ADR-0023).
+- **Aceite:** webhook com segredo inválido → 401; mesmo `update_id` duas vezes → um processamento; foto sempre confirma.
 
-## Fase 7 · Importação e prints
+## Fase 7 · Importação CSV/OFX
 - Parsers CSV (Nubank, Inter, Itaú, genérico com mapeamento de colunas) e OFX; pré-visualização;
-  deduplicação (RN-30); desfazer importação.
-- Leitura de print/foto de notificação via Gemini (imagem) → mesmo fluxo de confirmação do bot.
+  deduplicação (RN-30); desfazer importação. (Leitura de prints foi antecipada para a Fase 6.)
 
 ## Fase 8 · PWA, testes e hardening
-- Manifest, ícones, service worker (offline do shell), instalação no celular.
-- CSP estrita, revisão de headers, `supabase db lint`/advisors, testes E2E (Playwright) dos fluxos críticos.
+- Service worker com offline do shell (o de push já existe desde a Fase 6).
+- Rever a CSP (hashes/SRI quando estável com PPR), revisão de headers, `supabase db lint`/advisors, testes E2E (Playwright) dos fluxos críticos.
 - Backups (export agendado), política de exclusão de conta (transferência de dono antes de excluir).
 - Checklist de segurança: chaves rotacionadas, RLS revisada tabela a tabela, logs sem dados sensíveis.

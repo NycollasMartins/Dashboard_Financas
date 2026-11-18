@@ -127,7 +127,7 @@ Legenda de fase: **F1** = Fundação (feito), **F2…F8** = fases futuras.
 | RNF-01 | **Isolamento no banco** (Row Level Security) em todas as tabelas; o front nunca é a única barreira. |
 | RNF-02 | Valores monetários sempre em **centavos (inteiro)**; nunca float. Moeda BRL. |
 | RNF-03 | Datas no fuso **America/Sao_Paulo**. |
-| RNF-04 | Segredos só no servidor (`.env.local` / variáveis da Vercel). Nada de chave secreta no bundle do navegador. |
+| RNF-04 | Segredos só no servidor (`.env.local` / variáveis do EasyPanel). Nada de chave secreta no bundle do navegador. |
 | RNF-05 | Custo zero (planos gratuitos). Qualquer custo deve ser avisado antes, com alternativa gratuita. |
 | RNF-06 | Mobile-first, PWA instalável (F8), toques ≥ 44 px, respeito a `prefers-reduced-motion`. |
 | RNF-07 | Acessibilidade: contraste AA, navegação por teclado, labels em todos os campos, mensagens de erro associadas (`aria-describedby`). |
@@ -357,6 +357,26 @@ Exceções: logado com outro e-mail (oferece trocar de conta), convite expirado/
 - (Fase 4) Meta: aporte maior que o restante, retirada que zera, prazo no passado/no mês atual, meta sem
   aporte, sobra negativa, meta criada neste mês (ritmo pelo mês atual) — todos tratados e testados.
 
+## 9d. Critérios de aceite da Fase 6 (verificados)
+- [x] Webhook do Telegram: segredo inválido/ausente → 401; mesmo `update_id` → processado uma vez; grupo ignorado;
+      chat não vinculado recebe só instrução (integração com payloads no formato real).
+- [x] Vinculação por código de uso único (10 min) + QR + deep link; um chat por usuário; desvincular pelo app e pelo bot.
+- [x] Foto: extração validada (soma × total, data, valor > 0, duplicata), sem CPF/CNPJ, **sempre** confirma,
+      dividir por categoria; áudio: "Entendi: …" e o fluxo normal. Auditoria com `input_kind`.
+- [x] Notificações: preferências por tipo/canal, silêncio, idempotência, retentativa → dead-letter (pgTAP, 27).
+- [x] Docker: build + healthcheck + usuário não-root no CI; CSP/HSTS; smoke test de produção.
+- [x] E2E: Canais, central/preferências de notificação, guia do iPhone, foto/microfone no Assistente.
+- [ ] Push em iPhone real e Telegram com o bot de produção: roteiro manual (setup-manual §G e README).
+
+### Fase 6 — regras
+- **RN-110** Lançamento vindo de foto **sempre** pede confirmação.
+- **RN-111** A imagem e o áudio nunca são armazenados; a auditoria guarda só a extração/transcrição.
+- **RN-112** CPF/CNPJ do consumidor e dados de contato nunca são extraídos, logados ou gravados.
+- **RN-113** Áudio de no máximo 60 s; imagem de no máximo 4 MB (reduzida a 1600 px antes de enviar).
+- **RN-114** O bot só responde em chat privado e só a chats vinculados; um chat por usuário.
+- **RN-115** Toda resposta do bot que grava informa o espaço (individual/família).
+- **RN-116** O mesmo evento nunca gera duas notificações para a mesma pessoa; silêncio padrão 22h–7h.
+
 ## 9c. Critérios de aceite da Fase 5 (verificados)
 - [x] Parser local: 169 mensagens (intenção 100%) e holdout de 40 escritas depois (1ª medição honesta: intenção
       77,5%, precisão quando confiante 87,1%; após correções gerais: 100%) — ver README §Assistente.
@@ -365,7 +385,7 @@ Exceções: logado com outro e-mail (oferece trocar de conta), convite expirado/
 - [x] Integração mensagem → banco (8 cenários): grava, confirma, pergunta, aprende categoria, consulta, desfaz.
 - [x] RLS: histórico/sessão/ações só do próprio usuário; regras por família; cota atômica (pgTAP, 18 asserções).
 - [x] E2E do chat em desktop, iPhone 15, iPhone SE e Android.
-- [ ] Acurácia contra o Gemini/Groq reais: **pendente da chave** (`EVAL_PROVIDER=gemini pnpm eval:assistant`).
+- [x] Acurácia contra o Gemini/Groq reais (18/11/2026): ver README §12 (Gemini 94% de precisão; Groq 80% caso inteiro).
 
 ## 9b. Critérios de aceite da Fase 4 (verificados)
 - [x] Aporte não aparece em despesas; saldo de origem cai, reserva sobe, patrimônio igual (pgTAP).

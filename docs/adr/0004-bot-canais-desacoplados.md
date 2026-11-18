@@ -1,5 +1,7 @@
 # ADR-0004 · Bot com canais desacoplados e service role restrita
 
+> **Revisada pela [ADR-0021](0021-telegram-unico-canal.md) (Fase 6):** só Telegram (WhatsApp fora por custo) e o bot grava com a **sessão do próprio usuário** (não com a service role).
+
 **Status:** Aceita (implementação nas Fases 5–6) · **Decisor:** Arquiteto
 
 ## Decisão

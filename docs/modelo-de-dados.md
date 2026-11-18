@@ -267,6 +267,23 @@ colunas `is_projected`/`is_fixed`; `analytics_position` ganhou `planned_savings_
 `entry_source` ganhou `assistant`. Função `assistant_take_quota(provedor, limite_dia, limite_minuto)` — atômica,
 devolve `allowed`/`used_today`/`reason`. Job `limpar-assistente` (pg_cron) limpa sessões e uso antigos.
 
+### Fase 6 — Telegram, fotos/áudio e notificações (migration 0010)
+| Tabela | O que é | Quem vê |
+|---|---|---|
+| `telegram_updates` | `update_id` recebidos (idempotência), tipo, status, erro — **sem conteúdo** | Só o servidor |
+| `push_subscriptions` | Assinatura Web Push por aparelho (endpoint + chaves) | Só o próprio usuário |
+| `notification_settings` | Horário de silêncio | Só o próprio usuário |
+| `notification_prefs` | Por tipo: ligado, push, Telegram | Só o próprio usuário |
+| `notifications` | Central (lidas/não lidas), `unique(user_id, event_key)` = nunca duplica | Leitura/“marcar lida”/apagar do próprio; criação só pelo sistema |
+| `notification_deliveries` | Fila por canal com tentativas, próximo envio e erro (dead-letter) | Só o servidor |
+
+`assistant_actions`/`assistant_messages` ganharam `input_kind` (`text`/`photo`/`audio`). `assistant_usage` aceita
+`gemini-image`, `groq-audio`, `gemini-audio` (cotas próprias). `consume_channel_link_code` passou a manter **um chat
+por usuário**. Funções: `private.generate_notifications` (pg_cron `notificacoes`, 15 min), `private.notify`
+(respeita preferências, idempotente), triggers de meta atingida e lançamento de outro membro,
+`claim_notification_deliveries` (SKIP LOCKED + silêncio) e `finish_notification_delivery` (retentativa → dead),
+`private.run_notifications` (gera + chama o app via pg_net com segredo do Vault). View `ops_dead_letters` (só servidor).
+
 ### Ciclo de vida da conta (migration 0005)
 `transfer_workspace_ownership`, `get_account_deletion_blockers`, `delete_my_account` (ADR-0013).
 

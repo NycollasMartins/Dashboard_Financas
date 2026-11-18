@@ -1,5 +1,7 @@
 # ADR-0001 · Stack: Next.js 16 + Supabase + Vercel
 
+> **Revisada pela [ADR-0020](0020-producao-easypanel-docker.md) (Fase 6):** a hospedagem passou a ser EasyPanel (Docker) na VPS do dono; a Vercel deixou de ser usada. O texto abaixo é histórico.
+
 **Status:** Aceita · **Decisor:** Arquiteto · **Data:** 2026-11-17
 
 ## Contexto

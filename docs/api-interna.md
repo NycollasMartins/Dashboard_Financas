@@ -1,4 +1,4 @@
-# APIs internas (metas, lançamentos e assistente)
+# APIs internas (metas, lançamentos, assistente, Telegram e notificações)
 
 > Contrato comum (`src/lib/service-result.ts`): `Ctx = { supabase, userId, today? }` com a **sessão do usuário**
 > (RLS decide) e `Result<T>` (`ok`/`message`/`fieldErrors`), nunca exceção para erro de negócio.
@@ -17,12 +17,33 @@ As Server Actions de lançamento (`src/app/(app)/_actions/ledger.ts`) chamam est
 `handleAssistant(ctx: EngineCtx, input: ChatInput): Promise<ChatReply[]>` — ponto de entrada **de todos os canais**.
 - `EngineCtx = Ctx & { channel: "app" | "whatsapp" | "telegram", activeWorkspaceId, workspaces, providers? }`
 - `ChatInput`: `{ kind: "text", text }` · `{ kind: "confirm", pendingId, edits? }` · `{ kind: "cancel", pendingId }` ·
-  `{ kind: "choose", pendingId, value }` · `{ kind: "undo", batchId? }`
+  `{ kind: "choose", pendingId, value }` · `{ kind: "undo", batchId? }` ·
+  **Fase 6:** `{ kind: "chooseIndex", pendingId, index }` (botões de canais de texto) ·
+  `{ kind: "image", mimeType, base64 }` (comprovante; sempre confirma) · `{ kind: "audio", mimeType, base64, seconds?, filename? }`
 - `ChatReply`: `text` (pronto para qualquer canal), `tone`, e opcionalmente `card` (itens a confirmar, editáveis),
   `question` (opções numeradas), `done` (linhas gravadas + `batchId` para desfazer, `celebrate`).
 - Canais de texto: responder "1"/"2", "sim"/"cancelar", o valor ou o motivo continua a conversa pendente.
-- A Fase 6 só precisa: identificar o usuário pelo número (`channel_links`), criar o cliente com a sessão dele,
-  chamar `handleAssistant` com `channel: "whatsapp"` e enviar `reply.text` (+ opções numeradas).
+- Cartão pendente aceita correção por texto: "valor 45,90", "categoria mercado", "data ontem", "item 2 valor 30".
+- `PendingCard` ganhou `media` (o que foi lido na foto + alertas) e `extras` ("Dividir por categoria"/"Lançar como um
+  único gasto", escolhidos com `choose`/`chooseIndex`). `ChatReply.transcript` traz o que foi entendido do áudio.
+
+## Telegram (`src/lib/telegram/`) — Fase 6
+| Módulo | Papel |
+|---|---|
+| `webhook.ts#handleTelegramWebhook(request, schedule, deps?)` | Segredo → idempotência (`telegram_updates`) → 200 → `schedule(processUpdate)` |
+| `handler.ts#processUpdate(update, deps?)` | Anti-flood, vínculo, comandos, espaço, texto/foto/voz/botões → `handleAssistant` |
+| `session.ts#createUserClient(userId)` | Cliente Supabase **com a sessão do usuário** (RLS) — use sempre para dados |
+| `render.ts` | Puro: `renderReply` (HTML + teclado), `encodeCallback`/`decodeCallback` (≤ 64 bytes), comandos |
+| `update.ts` | Puro: schema do update e `classify` |
+| `api.ts` | `sendMessage`, `editMessage`, `downloadFile` (memória), retentativa em 429/5xx |
+
+Outro canal no futuro = outro adapter com a mesma forma (identificar → sessão do usuário → `handleAssistant` → render).
+
+## Notificações (`src/lib/notifications/`) — Fase 6
+- Criação **só no banco**: `private.notify(user, workspace, kind, event_key, title, body, url)` (respeita preferências,
+  idempotente). Tipos em `kinds.ts` (mesmos do banco).
+- `dispatch.ts#dispatchNotifications(limit)`: `claim_notification_deliveries` → Web Push (`push.ts#sendPush`) ou
+  Telegram → `finish_notification_delivery(sent|skipped|retry)`. Chamado por `POST /api/notifications/dispatch`.
 
 # API interna de metas (`src/lib/goals/service.ts`)
 

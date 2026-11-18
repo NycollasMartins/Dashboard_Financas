@@ -15,7 +15,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178c6?logo=typescript&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-Postgres%2017%20%2B%20RLS-3ecf8e?logo=supabase&logoColor=white)
 ![Tailwind](https://img.shields.io/badge/Tailwind-4.3-38bdf8?logo=tailwindcss&logoColor=white)
-![Status](https://img.shields.io/badge/status-Fase%205%20conclu%C3%ADda-5eead4)
+![Status](https://img.shields.io/badge/status-Fase%206%20conclu%C3%ADda-5eead4)
 ![Licença](https://img.shields.io/badge/licen%C3%A7a-todos%20os%20direitos%20reservados-lightgrey)
 
 Controle de receitas, despesas, cartões de crédito, faturas, parcelamentos, contas fixas e **metas** — para uma
@@ -68,7 +68,7 @@ As imagens são geradas automaticamente com `pnpm screenshots` a partir dos dado
 11. [Banco de dados: migrations, seed, reset e testes de RLS](#11-banco-de-dados)
 12. [Testes (unitários, banco, E2E e iPhone/iOS)](#12-testes)
 13. [Testar no iPhone (simulador e aparelho real)](#13-testar-no-iphone)
-14. [Deploy (Supabase, Brevo, Vercel)](#14-deploy)
+14. [Deploy (EasyPanel, Supabase, Telegram)](#14-deploy)
 15. [Regras de negócio em linguagem simples](#15-regras-de-negócio-em-linguagem-simples)
 16. [Convenções, commits, branches e como contribuir](#16-convenções-e-como-contribuir)
 17. [Solução de problemas](#17-solução-de-problemas)
@@ -90,7 +90,7 @@ alternando entre eles com um toque.
 - **Correto antes de bonito**: dinheiro em centavos inteiros, fuso de São Paulo, regras testadas no banco.
 - **Seguro por padrão**: o isolamento é garantido pelo Postgres (Row Level Security), não pela tela.
 - **Celular primeiro**: tudo é validado em iPhone 15, iPhone SE e Android 360×800.
-- **Custo zero**: só planos gratuitos (Supabase Free, Vercel Hobby, Brevo, IA gratuita nas próximas fases).
+- **Custo zero**: só planos gratuitos (Supabase Free, Brevo, Telegram, Gemini/Groq gratuitos) + a VPS que você já tem (EasyPanel).
 
 ## 2. Funcionalidades
 
@@ -169,10 +169,22 @@ alternando entre eles com um toque.
 - ✅ **Aprende**: corrigiu a categoria de "padaria do zé"? Na próxima já vem certa.
 - ✅ Funciona **sem IA** (parser local) e usa Gemini/Groq só nas mensagens difíceis — veja [o que é enviado](#assistente-o-que-vai-para-a-ia).
 
+**Lar+ no Telegram, fotos, áudio e notificações (Fase 6)**
+- ✅ **@LarMaisBot**: o mesmo assistente pelo Telegram — texto, **foto de cupom/nota/print** e **áudio**. Botões para
+  confirmar/editar/cancelar, desfazer, `/resumo`, `/espaco` ("usar família"/"usar individual"); toda resposta diz onde gravou.
+- ✅ Vincular em **Configurações → Canais**: código de uso único (10 min) + **QR code** + link direto; um chat por pessoa.
+- ✅ **Fotos** (também no Assistente do app — no iPhone abre a câmera): lê estabelecimento, total, data, pagamento, final
+  do cartão e itens; alerta soma × total, data estranha e possível duplicata; **sempre confirma**; **dividir por categoria**
+  (ex.: mercado + farmácia na mesma nota). Não lê nem guarda CPF/CNPJ; a imagem é descartada.
+- ✅ **Áudio** (Telegram e botão de microfone no app, até 60 s): "Entendi: '…'" e segue o fluxo normal.
+- ✅ **Notificações**: push no iPhone/Android (PWA), Telegram e **central no app** (sino com não lidas). Contas vencendo
+  amanhã, fatura fechando/vencendo, resumo semanal, meta atingida, aporte do dia, gasto acima da média, lançamento de
+  outro membro (opcional) — cada uma liga/desliga por canal, com **horário de silêncio**.
+- ✅ Produção: **Docker/EasyPanel** em [larmais.tech](https://larmais.tech), CSP/HSTS, healthcheck e smoke test.
+
 ### 🔜 Planejado (ver [roadmap](docs/roadmap.md))
-- 🔜 **Fase 6** – Bot no WhatsApp (API oficial) e Telegram.
-- 🔜 **Fase 7** – Importação de extratos CSV/OFX e leitura de prints de notificação.
-- 🔜 **Fase 8** – PWA completo (offline), CSP, retenção da auditoria, deploy final.
+- 🔜 **Fase 7** – Importação de extratos CSV/OFX.
+- 🔜 **Fase 8** – PWA offline, retenção da auditoria, backups, revisão final de segurança.
 
 ## 3. Stack e por que cada peça
 
@@ -180,7 +192,7 @@ alternando entre eles com um toque.
 |---|---|---|---|
 | Node.js | 24 | Runtime do Next.js e das ferramentas | — |
 | pnpm | 9.12 | Instalação rápida e determinística | — |
-| **Next.js** (App Router, Turbopack) | 16.4.6 | Front e back no mesmo projeto: Server Components, Server Actions, Route Handlers (webhooks futuros) | [ADR-0001](docs/adr/0001-stack.md), [ADR-0008](docs/adr/0008-cache-components-e-sessao.md) |
+| **Next.js** (App Router, Turbopack, `output: standalone`) | 16.4.6 | Front e back no mesmo projeto: Server Components, Server Actions, Route Handlers (webhook do Telegram, notificações) | [ADR-0001](docs/adr/0001-stack.md), [ADR-0008](docs/adr/0008-cache-components-e-sessao.md) |
 | React | 19.3 | UI; `useActionState` nos formulários | — |
 | TypeScript | 5.9 | Tipagem ponta a ponta (tipos do banco gerados) | — |
 | Tailwind CSS | 4.3 | Estilo com tokens do design system | [design system](docs/design-system.md) |
@@ -192,7 +204,10 @@ alternando entre eles com um toque.
 | pgTAP | — | Testes de RLS e regras **dentro** do Postgres | ADR-0002 |
 | Playwright (+ MCP) | 1.65 | E2E em WebKit (Safari) com iPhone 15/SE, Android e desktop | [ADR-0012](docs/adr/0012-testes-mobile-ios.md) |
 | next-themes, sonner, lucide-react | — | Tema, toasts, ícones | — |
-| Vercel (Hobby) | — | Hospedagem gratuita | ADR-0001 |
+| **Docker + EasyPanel** (VPS própria) | Node 24 alpine | Hospedagem em `larmais.tech`, HTTPS Let's Encrypt, deploy a cada push | [ADR-0020](docs/adr/0020-producao-easypanel-docker.md) |
+| Telegram Bot API | — | Canal de mensagens gratuito (@LarMaisBot) | [ADR-0021](docs/adr/0021-telegram-unico-canal.md) |
+| Gemini 3.1 Flash-Lite · Groq (gpt-oss-20b, Whisper large-v3) | — | IA só interpreta: texto difícil, leitura de fotos, transcrição de áudio (gratuitos) | [ADR-0018](docs/adr/0018-ia-so-interpreta.md), [ADR-0022](docs/adr/0022-fotos-e-audio.md) |
+| web-push (VAPID) · qrcode | 3.6 · 1.5 | Notificações push padrão · QR da vinculação | [ADR-0023](docs/adr/0023-notificacoes.md) |
 | Brevo (SMTP) | — | E-mails do Auth em produção, gratuito | [ADR-0007](docs/adr/0007-convites-e-emails.md) |
 
 Todas as decisões estão em [`docs/adr/`](docs/adr/README.md).
@@ -201,42 +216,84 @@ Todas as decisões estão em [`docs/adr/`](docs/adr/README.md).
 
 ```mermaid
 flowchart LR
-    subgraph Cliente["Navegador / iPhone (PWA)"]
+    subgraph Cliente["iPhone / Android / navegador (PWA Lar+)"]
         UI["React 19<br/>Server + Client Components"]
+        SW["sw.js<br/>(push + clique)"]
     end
+    TGU["Telegram<br/>(@LarMaisBot)"]
 
-    subgraph Vercel["Vercel · Next.js 16"]
-        PX["proxy.ts<br/>(renova sessão, redireciona)"]
+    subgraph VPS["VPS · EasyPanel · Docker (larmais.tech)"]
+        PX["proxy.ts<br/>(renova sessão)"]
         RSC["Server Components<br/>(leitura com RLS)"]
-        SA["Server Actions<br/>(Zod → Supabase)"]
-        WH["Route Handlers<br/>/api/webhooks/* (Fase 6)"]
+        SA["Server Actions<br/>(Zod → APIs internas)"]
+        ENG["Motor do assistente<br/>handleAssistant (todos os canais)"]
+        WH["/api/telegram/webhook<br/>(secret_token, idempotência)"]
+        DS["/api/notifications/dispatch<br/>(x-cron-secret)"]
     end
 
     subgraph Supabase["Supabase (plano Free)"]
-        AUTH["Auth<br/>(e-mail + senha)"]
-        PG[("Postgres 17<br/>RLS · views calculadas<br/>audit_log")]
-        CRON["pg_cron<br/>gerar-recorrencias 03:00"]
+        AUTH["Auth"]
+        PG[("Postgres 17 · RLS<br/>views calculadas · audit_log<br/>fila de notificações")]
+        CRON["pg_cron + pg_net<br/>recorrências · notificações (15 min)"]
     end
 
-    subgraph Futuro["Fases 5–6"]
-        AI["IA: Gemini / Groq<br/>(interface AiParser)"]
-        WA["WhatsApp Cloud API"]
-        TG["Telegram Bot API"]
-    end
-
-    SMTP["Brevo SMTP"]
+    AI["Gemini (texto/fotos)<br/>Groq (texto/Whisper)"]
+    SMTP["Brevo SMTP<br/>@larmais.tech"]
+    PUSH["Serviços de push<br/>(Apple / Google / Mozilla)"]
 
     UI -->|HTTPS| PX --> RSC
-    UI --> SA
-    RSC -->|chave publicável + JWT do usuário| PG
-    SA --> PG
-    SA --> AUTH
-    AUTH --> SMTP
+    UI --> SA --> ENG
+    RSC & SA & ENG -->|sessão do usuário| PG
+    TGU -->|webhook| WH --> ENG
+    ENG -->|só texto/nomes · imagem/áudio descartados| AI
+    SA --> AUTH --> SMTP
     CRON --> PG
-    WA -. webhook .-> WH
-    TG -. webhook .-> WH
-    WH -. service role restrita .-> PG
-    WH -.-> AI
+    CRON -->|pg_net| DS --> PUSH --> SW
+    DS --> TGU
+```
+
+**Telegram → banco** (o bot grava como a própria pessoa — RLS e auditoria iguais ao app; ADR-0021)
+```mermaid
+sequenceDiagram
+    participant T as Telegram
+    participant W as Webhook
+    participant DB as Supabase
+    participant M as Motor (handleAssistant)
+    T->>W: update (header secret_token)
+    W->>W: segredo confere? (tempo constante) senão 401
+    W->>DB: insert telegram_updates(update_id) — duplicado? → 200 e para
+    W-->>T: 200 imediato
+    W->>DB: vínculo do chat (channel_links) — não vinculado? → só instrução
+    W->>DB: abre a SESSÃO do usuário (magiclink interno, em memória)
+    W->>M: texto / foto / áudio / botão
+    M->>DB: APIs internas (RLS) + assistant_actions (origem + mensagem)
+    M-->>W: respostas estruturadas
+    W->>T: mensagem com botões (edita a mensagem após confirmar)
+```
+
+**Foto/áudio → IA → confirmação** (a IA só extrai/transcreve; o sistema valida; ADR-0022)
+```mermaid
+flowchart LR
+    F["📷 foto (≤1600 px)"] --> G["Gemini extrai JSON<br/>(sem CPF/CNPJ)"] --> V["Validação no sistema<br/>soma×total · data · valor>0 · duplicata · cartão pelo final"]
+    V --> C{"Cartão de confirmação<br/>(SEMPRE)"}
+    C -->|um gasto| S["Gravar"]
+    C -->|dividir por categoria| S
+    C -->|editar / cancelar| X["…"]
+    A["🎤 áudio ≤60 s"] --> W["Whisper (Groq)<br/>reserva: Gemini"] --> E["“Entendi: …”"] --> P["Mesmo fluxo do texto<br/>(parser local → IA → regras de confirmação)"] --> S
+```
+
+**Notificações** (idempotentes, com silêncio e retentativas; ADR-0023)
+```mermaid
+flowchart LR
+    CR["pg_cron 15 min"] --> GEN["generate_notifications<br/>(contas, faturas, metas, resumo…)"]
+    TRG["triggers<br/>(meta atingida, outro membro)"] --> N
+    GEN --> N[("notifications<br/>unique(user, event_key)")]
+    N --> CEN["Central no app 🔔"]
+    N --> Q[("notification_deliveries<br/>push · telegram")]
+    CR -->|pg_net + segredo do Vault| D["/api/notifications/dispatch"]
+    Q -->|claim SKIP LOCKED<br/>fora do silêncio| D
+    D --> PU["Web Push (VAPID)"] & TG["Telegram"]
+    D -->|erro: 1 min→5→30→2 h<br/>5 falhas = dead-letter| Q
 ```
 
 **Conceito central: workspace (espaço).** Todo dado financeiro pertence a um *workspace*:
@@ -293,7 +350,9 @@ erDiagram
 | `categories` | Categorias e subcategorias por espaço. |
 | `audit_log` | Quem criou/alterou/excluiu o quê e quando. |
 | `goals`, `goal_contributions` | Metas e aportes/retiradas (Fase 4); aporte planejado = `recurrences.goal_id`; resumo calculado em `goal_summaries`. |
-| `channel_links`, `bot_messages`, … | Vínculo de WhatsApp/Telegram (Fases 5–6, tabelas já criadas). |
+| `channel_links`, `channel_link_codes`, `telegram_updates` | Vínculo do Telegram (código de uso único, só o hash), idempotência por `update_id` (sem conteúdo). |
+| `assistant_*`, `category_rules` | Histórico/estado do assistente, ações com a mensagem original (`input_kind` texto/foto/áudio), regras aprendidas, cota. |
+| `notifications`, `notification_deliveries`, `notification_prefs`, `notification_settings`, `push_subscriptions` | Central, fila de envio com retentativas, preferências por tipo/canal, silêncio e aparelhos com push (Fase 6). |
 
 ## 6. Segurança
 
@@ -309,7 +368,14 @@ erDiagram
   vale também para somas e médias — uma família nunca vê números de outra (testado).
 - **Assistente**: a IA só interpreta; validação por schema, gravação pelas mesmas APIs das telas, chaves só no
   servidor, cota por usuário e rate limit (ADR-0018/0019). Detalhes logo abaixo.
-- **Testes de isolamento**: 224 asserções pgTAP (inclui "estranho não vê nada", "membro não promove a si
+- **Telegram** (ADR-0021): webhook só com o `secret_token` certo (comparação em tempo constante), idempotência por
+  `update_id`, anti-flood (20/min por chat), só chat privado, chat não vinculado não recebe dado nenhum, e o bot grava
+  com a **sessão do próprio usuário** (a secret key nunca toca dados financeiros).
+- **Fotos e áudio** (ADR-0022): processados em memória e descartados; sem CPF/CNPJ; limites de tamanho e cotas próprias.
+- **Notificações**: chave VAPID privada só no servidor; disparo protegido por segredo (Vault + `CRON_SECRET`).
+- **Produção** (ADR-0020): contêiner sem root, CSP (`frame-ancestors 'none'`, `connect-src` só app + Supabase),
+  HSTS preload, COOP; câmera/microfone liberados só para o próprio site.
+- **Testes de isolamento**: 251 asserções pgTAP (inclui "estranho não vê nada", "membro não promove a si
   mesmo", "não dá para mover lançamento de espaço").
 
 **Matriz de permissões**
@@ -326,7 +392,7 @@ erDiagram
 | Sair da família | ❌ (transfira a posse) | ✅ | ✅ |
 | Transferir a posse / excluir a família | ✅ | ❌ | ❌ |
 
-**Segredos:** só em `.env.local` (ignorado pelo git) e nas variáveis da Vercel. Apenas `.env.example`
+**Segredos:** só em `.env.local` (ignorado pelo git) e nas variáveis do EasyPanel. Apenas `.env.example`
 (sem valores reais) é versionado. Variáveis `NEXT_PUBLIC_*` vão para o navegador — **nunca** coloque
 segredos nelas. Arquivos que leem segredos começam com `import "server-only"`. Headers de segurança
 (HSTS, X-Frame-Options, nosniff, Referrer-Policy, Permissions-Policy) em `next.config.ts`.
@@ -350,23 +416,31 @@ segredos nelas. Arquivos que leem segredos começam com `import "server-only"`. 
 - Sem chaves configuradas (ou com `ASSISTANT_AI_ENABLED=false`), **nada** sai do app.
 - O histórico do chat é seu (ninguém da família vê) e pode ser apagado na própria tela.
 
+**Fotos e áudios (Fase 6).** A **imagem** vai para o **Google Gemini** e o **áudio** para o **Groq** (Whisper) — só para
+ler o comprovante ou transcrever o que você falou. O arquivo **não é guardado** em lugar nenhum (nem no banco, nem em
+disco, nem em log): fica só o lançamento com "origem: foto/áudio" e, na auditoria, o **resumo lido** ou a
+**transcrição**. Não extraímos nem gravamos CPF/CNPJ, telefone, e-mail ou chave Pix que apareçam no comprovante.
+No gratuito, o Google pode usar as imagens enviadas para melhorar os produtos — **evite fotografar documentos**.
+Pelo Telegram, as mensagens também passam pelos servidores do Telegram (como qualquer conversa no app).
+
 ## 7. Estrutura de pastas
 
 ```
 .
-├── .github/workflows/ci.yml   # CI: typecheck, lint, Vitest, pgTAP e E2E (iPhone/Android/desktop)
+├── .github/workflows/ci.yml   # CI: typecheck, lint, Vitest, pgTAP, integração, E2E e imagem Docker
+├── Dockerfile, .dockerignore  # Imagem de produção (standalone, sem root, healthcheck)
 ├── .mcp.json                  # Playwright MCP (WebKit + iPhone) para o Claude Code
 ├── docs/                      # Documentação
-│   ├── adr/                   #   Decisões de arquitetura (0001–0013)
+│   ├── adr/                   #   Decisões de arquitetura (0001–0023)
 │   ├── images/                #   Screenshots do README (gerados por `pnpm screenshots`)
 │   ├── requisitos.md          #   Requisitos e regras de negócio (RN-xx)
 │   ├── modelo-de-dados.md     #   Diagrama ER e RLS
 │   ├── design-system.md       #   Cores, tipografia, componentes
 │   ├── roadmap.md             #   Fases
 │   └── setup-manual.md        #   Passos manuais (contas, chaves, deploy)
-├── e2e/                       # Testes Playwright (auth, conta, lançamentos, iOS, screenshots)
-├── public/                    # Ícones (apple-touch-icon, PWA)
-├── scripts/                   # dev-lan.mjs (celular no Wi-Fi), generate-icons.mjs
+├── e2e/                       # Playwright (auth, conta, lançamentos, iOS, canais, notificações, smoke, screenshots)
+├── public/                    # brand/ (logo Lar+, foto do bot), icons/ (PWA), splash/ (iPhone), sw.js (push)
+├── scripts/                   # dev-lan, brand (marca), telegram (webhook), vapid, generate-media-eval
 ├── src/
 │   ├── app/
 │   │   ├── (auth)/            # Telas públicas: entrar, cadastro, senha, convite
@@ -374,8 +448,11 @@ segredos nelas. Arquivos que leem segredos começam com `import "server-only"`. 
 │   │   │   │                  #   categorias, família, configurações, mais
 │   │   │   ├── painel/        #   Dashboard (blocos com Suspense + load.ts com cache)
 │   │   │   ├── metas/         #   Metas e detalhe (/metas/[id]); planejamento/ = sobra e distribuição
-│   │   │   ├── assistente/    #   Chat do assistente (canal "app")
-│   │   │   └── _actions/      #   Server Actions (lançamentos, preferências)
+│   │   │   ├── assistente/    #   Chat do assistente (canal "app": texto, foto, áudio)
+│   │   │   ├── notificacoes/  #   Central de notificações
+│   │   │   ├── configuracoes/ #   canais/ (Telegram) e notificacoes/ (push, preferências, silêncio)
+│   │   │   └── _actions/      #   Server Actions (lançamentos, metas, assistente, canais, notificações)
+│   │   ├── api/               # health · telegram/webhook · notifications/dispatch
 │   │   ├── auth/confirm/      # Destino dos links de e-mail (token_hash)
 │   │   ├── layout.tsx         # Fontes, tema, metadados PWA/iOS
 │   │   └── manifest.ts        # Manifest do PWA
@@ -383,7 +460,8 @@ segredos nelas. Arquivos que leem segredos começam com `import "server-only"`. 
 │   │   ├── app-shell/         # Sidebar, barra inferior, seletor de espaço, menu do usuário
 │   │   ├── dashboard/         # KPIs, gráficos (HTML/SVG), filtros, insights, listas
 │   │   ├── goals/             # Anel, cartão, gráfico, simulador, guardar/retirar, celebração
-│   │   ├── assistant/         # Chat (bolhas, cartão de confirmação, opções, desfazer)
+│   │   ├── assistant/         # Chat (bolhas, cartão de confirmação, opções, desfazer, câmera, microfone)
+│   │   ├── notifications/     # Sino, central, ativar push (guia do iPhone), preferências
 │   │   ├── privacy/           # Ocultar valores (ícone de olho)
 │   │   ├── ledger/            # Lançamento rápido (formulário sob demanda), listas, formulários
 │   │   ├── forms/             # Campos acessíveis e botão de envio
@@ -393,7 +471,9 @@ segredos nelas. Arquivos que leem segredos começam com `import "server-only"`. 
 │   │   ├── analytics/         # Período, variação, categorias, insights do painel (+ testes)
 │   │   ├── goals/             # math.ts (cálculos puros) + service.ts (API interna p/ telas, IA e bot)
 │   │   ├── ledger/            # service.ts — API interna de lançamentos (telas e assistente)
-│   │   ├── assistant/         # parser local, contrato (Zod), provedores IA, avaliação; server/ = motor de conversa
+│   │   ├── assistant/         # parser local, contrato (Zod), provedores IA, media/ (comprovantes), avaliação; server/ = motor
+│   │   ├── telegram/          # Adapter do bot: webhook, update, render (botões), sessão do usuário, API
+│   │   ├── notifications/     # Tipos, Web Push (VAPID), dispatcher
 │   │   ├── data/              # Consultas server-only (ledger.ts, analytics.ts)
 │   │   ├── supabase/          # Clientes (servidor/proxy), tipos gerados, retry de relógio
 │   │   ├── validation/        # Schemas Zod
@@ -460,16 +540,20 @@ Copie `.env.example` para `.env.local` e preencha.
 
 | Variável | Pública? | Para que serve | Onde obter |
 |---|:---:|---|---|
-| `NEXT_PUBLIC_SITE_URL` | pública | URL do app (links de e-mail e convites) | Local: `http://localhost:3000`; produção: URL da Vercel |
-| `NEXT_PUBLIC_SUPABASE_URL` | pública | Endereço da API do Supabase | Local: `supabase status` (API_URL); nuvem: *Project Settings → API Keys* |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | pública | Chave publicável (`sb_publishable_…`); a segurança vem da RLS | Local: `supabase status` (PUBLISHABLE_KEY); nuvem: *API Keys* |
-| `SUPABASE_SECRET_KEY` | **secreta** | Service role, só para o webhook do bot (Fase 6). **Nunca** com `NEXT_PUBLIC_` | *API Keys → Secret keys* |
-| `GEMINI_API_KEY` / `GROQ_API_KEY` | **secretas** | IA do assistente (opcional; sem elas usa só o parser local) | Google AI Studio / console.groq.com — passo a passo em `docs/setup-manual.md` §E |
-| `GEMINI_MODEL` / `GROQ_MODEL` | servidor | Modelos (padrão `gemini-3.1-flash-lite` / `openai/gpt-oss-20b`) | — |
-| `ASSISTANT_AI_DAILY_LIMIT` / `ASSISTANT_AI_PER_MINUTE` | servidor | Cota por usuário/dia/provedor (40) e por minuto (8) | — |
-| `ASSISTANT_CONFIRM_ABOVE_CENTS` | servidor | Acima deste valor sempre pede confirmação (100000 = R$ 1.000) | — |
-| `ASSISTANT_AI_ENABLED` | servidor | `false` desliga a IA (tudo local) | — |
-| `WHATSAPP_*`, `TELEGRAM_*` | **secretas** | Bots (Fase 6) | Meta for Developers / @BotFather |
+| `NEXT_PUBLIC_SITE_URL` | pública (build) | URL do app (e-mails, convites, botões do Telegram) | Local: `http://localhost:3000`; produção: `https://larmais.tech` |
+| `NEXT_PUBLIC_SUPABASE_URL` | pública (build) | Endereço da API do Supabase | Local: `supabase status` (API_URL); nuvem: *Project Settings → API Keys* |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | pública (build) | Chave publicável (`sb_publishable_…`); a segurança vem da RLS | Local: `supabase status`; nuvem: *API Keys* |
+| `SUPABASE_SECRET_KEY` | **secreta** | Webhook do Telegram (achar o vínculo, idempotência) e disparo de notificações. **Nunca** com `NEXT_PUBLIC_` | *API Keys → Secret keys* (local: `supabase status`) |
+| `GEMINI_API_KEY` / `GROQ_API_KEY` | **secretas** | IA: texto difícil, fotos (Gemini), áudio (Groq) | `docs/setup-manual.md` §E |
+| `GEMINI_MODEL` / `GROQ_MODEL` / `GROQ_AUDIO_MODEL` | servidor | Padrões `gemini-3.1-flash-lite` / `openai/gpt-oss-20b` / `whisper-large-v3` | — |
+| `ASSISTANT_AI_DAILY_LIMIT` / `ASSISTANT_AI_PER_MINUTE` | servidor | Cota de texto por usuário/dia/provedor (40) e por minuto (8) | — |
+| `ASSISTANT_PHOTO_DAILY_LIMIT` / `ASSISTANT_AUDIO_DAILY_LIMIT` | servidor | Fotos (15) e áudios (30) por usuário/dia | — |
+| `ASSISTANT_MAX_AUDIO_SECONDS` / `ASSISTANT_CONFIRM_AUDIO` | servidor | Duração máxima (60 s) · `true` = áudio sempre pede confirmação | — |
+| `ASSISTANT_CONFIRM_ABOVE_CENTS` / `ASSISTANT_AI_ENABLED` | servidor | Valor que sempre confirma (R$ 1.000) · `false` desliga a IA | — |
+| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_WEBHOOK_SECRET` | **secretas** | Bot e segredo do webhook | @BotFather · `openssl rand -hex 32` (§F) |
+| `TELEGRAM_BOT_USERNAME` / `TELEGRAM_WEBHOOK_URL` | servidor | `LarMaisBot` · URL do túnel só para teste local (§I) | — |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | pública (build) / **secreta** / servidor | Web Push | `pnpm vapid` (§G) |
+| `CRON_SECRET` | **secreta** | pg_cron → `/api/notifications/dispatch` (mesmo valor no Vault) | `openssl rand -hex 32` (§C.7) |
 
 ## 10. Rodando localmente e scripts
 
@@ -503,11 +587,16 @@ pnpm dev                 # http://localhost:3000
 | `pnpm test:e2e:ios` | E2E só nos iPhones (WebKit) |
 | `pnpm test:e2e:ui` | Modo visual do Playwright |
 | `pnpm screenshots` | Regera as imagens do README (`docs/images`) |
-| `pnpm check` | typecheck + lint + unitários + banco |
+| `pnpm check` | typecheck + lint + unitários + banco + integração |
+| `pnpm test:integration` | Integração: assistente e **webhook do Telegram** → banco (Supabase local, Telegram simulado) |
+| `pnpm test:smoke` | Smoke test contra a produção (`E2E_BASE_URL=https://larmais.tech`, usuário de teste) |
+| `pnpm eval:assistant` | Acurácia do parser local; com chaves, IA real (texto, fotos e áudios — ver §12) |
+| `pnpm telegram set\|delete\|info` | Registra/remove/consulta o webhook do bot (usa as variáveis de ambiente) |
+| `pnpm vapid` | Gera as chaves VAPID do Web Push |
+| `pnpm brand` | Regera logo, ícones, telas de abertura e foto do bot (`scripts/brand-mark.mjs`) |
 | `pnpm db:start` / `db:stop` | Liga/desliga o Supabase local |
 | `pnpm db:reset` | Recria o banco (migrations + seed) |
 | `pnpm db:types` | Regenera `src/lib/supabase/database.types.ts` |
-| `pnpm icons` | Regera os ícones PNG a partir da marca |
 
 ## 11. Banco de dados
 
@@ -525,11 +614,13 @@ pnpm dev                 # http://localhost:3000
 
 | Tipo | Comando | Cobre |
 |---|---|---|
-| Unitários (Vitest) | `pnpm test` | Centavos (`parseBRL`, `formatBRL`, parcelas), datas em São Paulo (inclusive perto da meia-noite e na virada do ano), regra da fatura, recorrências, competência × caixa, período do painel, variação e cor semântica, categorias, insights, redirecionamento seguro, retry de relógio, metas (mensal necessário com juros, ritmo ponderado, estimativa, capacidade, distribuição, simulador, corte por categoria), motor de projeção, assistente (valores, datas, parser, resolvedor, pipeline com IA simulada, avaliação) — **200 testes** |
-| Banco (pgTAP) | `pnpm test:db` | Isolamento entre usuários e famílias, papéis, convites, posse/exclusão de conta, faturas, parcelas (ano seguinte, centavos ímpares, fevereiro), recorrências idempotentes, saldos, pagamentos, limite, categorias, auditoria; painel: competência × caixa (somam igual no período fechado), mês vazio, só previstos, parcelas cruzando o ano, fatura paga parcialmente, vários membros, saldo projetado e RLS entre famílias; metas: aporte não é despesa (nada contado duas vezes), retirada com motivo e limite, conclusão automática, aporte planejado idempotente, projeção (mês atual = Fase 3, 36 meses, nada gravado) e RLS; assistente: histórico/sessão/ações só do dono, regras por família, cota atômica e rate limit — **224 asserções** |
-| Integração (Vitest + Supabase local) | `pnpm test:integration` | Assistente de ponta a ponta: mensagem → interpretação → API interna → banco (grava, confirma, pergunta, aprende categoria, consulta, desfaz) — **8 cenários** |
-| Avaliação do assistente | `pnpm eval:assistant` | Parser local contra 169 + 40 mensagens; com `EVAL_PROVIDER=gemini` ou `groq`, mede a IA real (fora do CI, gasta cota) |
-| E2E (Playwright) | `pnpm test:e2e` | Login/validações, cadastro → confirmação → troca de e-mail → exclusão, lançamento em 3 toques, parcelado, desfazer, pagar fatura, recorrência, categoria com reatribuição; painel (filtros na URL + voltar, visões, ocultar valores, tabela, vazio, clique → lista); regressão da 1ª compra parcelada; metas (3 toques, retirada com motivo, conclusão e celebração, simulador, planejamento), lista na visão caixa e projeções, campo de valor; checagens iOS |
+| Unitários (Vitest) | `pnpm test` | Centavos (`parseBRL`, `formatBRL`, parcelas), datas em São Paulo (inclusive perto da meia-noite e na virada do ano), regra da fatura, recorrências, competência × caixa, período do painel, variação e cor semântica, categorias, insights, redirecionamento seguro, retry de relógio, metas (mensal necessário com juros, ritmo ponderado, estimativa, capacidade, distribuição, simulador, corte por categoria), motor de projeção, assistente (valores, datas, parser, resolvedor, pipeline com IA simulada, avaliação, valor fora da mensagem descartado, fala transcrita), **comprovantes** (sem CPF/CNPJ, soma × total, data, dividir por categoria), **Telegram** (payloads reais, botões ≤ 64 bytes, comandos, renderização) — **~230 testes** |
+| Banco (pgTAP) | `pnpm test:db` | Isolamento entre usuários e famílias, papéis, convites, posse/exclusão de conta, faturas, parcelas (ano seguinte, centavos ímpares, fevereiro), recorrências idempotentes, saldos, pagamentos, limite, categorias, auditoria; painel: competência × caixa (somam igual no período fechado), mês vazio, só previstos, parcelas cruzando o ano, fatura paga parcialmente, vários membros, saldo projetado e RLS entre famílias; metas: aporte não é despesa (nada contado duas vezes), retirada com motivo e limite, conclusão automática, aporte planejado idempotente, projeção (mês atual = Fase 3, 36 meses, nada gravado) e RLS; assistente: histórico/sessão/ações só do dono, regras por família, cota atômica e rate limit; Fase 6: um chat por usuário, código de uso único, idempotência do Telegram, dead-letter só para o servidor, push só do dono (https), notificações (preferências, idempotência, antes das 8h nada, outro membro opcional, meta atingida, silêncio, nunca duplica, 5 falhas → dead-letter), cota de foto — **251 asserções** |
+| Integração (Vitest + Supabase local) | `pnpm test:integration` | Assistente de ponta a ponta (8 cenários) + **webhook do Telegram** com payloads no formato real (12): segredo inválido → 401, chat não vinculado, grupo ignorado, vinculação por código, idempotência, texto, desfazer pelo botão, **foto** (divide por categoria, sem CNPJ, sempre confirma), **voz**, áudio longo recusado, espaço, desvincular — **20 cenários** |
+| Avaliação do assistente | `pnpm eval:assistant` | Parser local contra 173 + 40 mensagens; IA real com `EVAL_PROVIDER=gemini\|groq`; **fotos** (10 comprovantes sintéticos) e **áudios** (12 vozes sintéticas) com `EVAL_MEDIA=photos\|audio` (fora do CI, gasta cota) |
+| E2E (Playwright) | `pnpm test:e2e` | Login/validações, cadastro → confirmação → troca de e-mail → exclusão, lançamento em 3 toques, parcelado, desfazer, pagar fatura, recorrência, categoria com reatribuição; painel (filtros na URL + voltar, visões, ocultar valores, tabela, vazio, clique → lista); regressão da 1ª compra parcelada; metas (3 toques, retirada com motivo, conclusão e celebração, simulador, planejamento), lista na visão caixa e projeções, campo de valor; **Canais** (código + QR + link, vinculado/desvincular), **central de notificações** (sino, deep link, lida), **preferências** e silêncio, **guia do iPhone** para push, **foto/microfone** no Assistente; checagens iOS |
+| Imagem Docker (CI) | job `docker` | Build multi-stage, contêiner fica `healthy`, roda como `nextjs` (sem root) |
+| Smoke de produção | `pnpm test:smoke` | Saúde + Supabase, headers, manifest Lar+, rotas de servidor recusam sem segredo, login, painel, assistente (grava e desfaz) |
 | iOS/mobile | `pnpm test:e2e:ios` | Sem rolagem horizontal, barra inferior fixa com alvos ≥ 44 px, safe area, fonte ≥ 16 px (sem zoom do iOS), `inputmode="decimal"`, `100dvh`, meta tags PWA e `apple-touch-icon`, folha de lançamento cabe na tela |
 
 No **CI** (GitHub Actions) tudo isso roda a cada push na `main` e em cada pull request.
@@ -546,7 +637,43 @@ No **CI** (GitHub Actions) tudo isso roda a cada push na `main` e em cada pull r
 | Groq gpt-oss-20b **sozinho** — conjunto principal | 169 | 92,3% | 79,9% | 100% | 79,9% |
 | **Pipeline real** (local → Gemini) — holdout | 40 | **100%** | 100% | 97,5% | 100% |
 
-*Medido em 17/11/2026 com `EVAL_PROVIDER=gemini|groq pnpm eval:assistant` (IA real, fora do CI).*
+*Medido em 17–18/11/2026 com `EVAL_PROVIDER=gemini|groq pnpm eval:assistant` (IA real, fora do CI).*
+
+### Fotos e áudios: acurácia medida (18/11/2026, IA real, dados sintéticos)
+
+**Fotos** — Gemini 3.1 Flash-Lite, 10 comprovantes gerados em HTML e fotografados pelo Chromium (NFC-e de mercado+farmácia
+com CPF/CNPJ fictícios impressos, cupom de restaurante, notificação Nubank e Inter, comprovante Pix, recibo à mão, print de
+fatura, padaria com desconto, uma paisagem e um cupom borrado):
+
+| Campo | Acerto |
+|---|---|
+| É comprovante? (paisagem recusada) | 100% (10/10) |
+| Detecta ilegível (borrado → pede outra foto) | 100% (1/1) |
+| Total | 100% (8/8) |
+| Data | 100% (5/5) |
+| Estabelecimento | 100% (6/6) |
+| Forma de pagamento | 100% (7/7) |
+| Final do cartão | 100% (3/3) |
+| Itens lidos | 100% (3/3) |
+| **Não extraiu CPF/CNPJ/contato** | 100% (2/2) |
+
+Tempo: mediana 7,4 s (máx. 24 s, com um 503 do Gemini e nova tentativa). Imagens limpas e geradas por computador são
+mais fáceis que fotos reais tortas e com reflexo — **a próxima medição deve ser com cupons seus** (o sistema sempre mostra o
+que leu e pede confirmação, então um erro de leitura não vira lançamento sozinho).
+
+**Áudios** — 12 frases faladas por **vozes sintéticas** do macOS (pt-BR), inclusive informais ("gastei cinquentinha no
+uber", "caiu mil do freela"), em OGG/Opus como a voz do Telegram:
+
+| Transcritor | Transcrição com o essencial | Intenção certa (pipeline) | Valor certo | Tempo |
+|---|---|---|---|---|
+| **Groq Whisper large-v3 (padrão)** | **92%** | **92%** | **67%** | ~0,5 s |
+| Groq Whisper large-v3-turbo | 75% | 92% | 33% | ~0,6 s |
+| Gemini (reserva) | 75% | 83% | 56% | ~1,6 s |
+
+Os erros que sobram são da **voz robótica** ("a tente e cinco" no lugar de "oitenta e cinco"). A medição corrigiu 2 falhas
+reais: "cinquentinha"/"vintinho" e "32 e 50" (= R$ 32,50) agora são valores. Quando o valor não é entendido, o assistente
+**pergunta**; o que for gravado aparece com "Entendi: '…'" e o botão **Desfazer**. Para exigir confirmação em todo áudio:
+`ASSISTANT_CONFIRM_AUDIO=true`.
 
 **Leia com cuidado:** o conjunto principal foi escrito junto com o parser (viés a favor). O número mais honesto é a
 **1ª medição do holdout** (40 frases escritas depois): 77,5% de intenção. As correções que vieram depois são regras
@@ -572,6 +699,19 @@ o parser local resolve ~78–88% sozinho → **≈ 2–11 chamadas de IA por dia
 (≈ 1–3 por pessoa). O limite gratuito do Gemini 3.1 Flash-Lite (~500/dia **por projeto**) e o do Groq (~1.000/dia)
 sobram muito; o limite por usuário do app (40/dia) só protege contra abuso. No Groq, o limite que pesa é o de
 **tokens**: 8.000/min e 200.000/dia no gpt-oss-20b ≈ 150 chamadas/dia (cada uma ≈ 1.300 tokens) — ainda folgado.
+
+**Cota total estimada (texto + fotos + áudios), família de 2 a 5 pessoas por dia:**
+
+| Uso | Por pessoa/dia | Família (2–5) | Vai para | Limite gratuito | Folga |
+|---|---|---|---|---|---|
+| Texto que precisa de IA | 1–3 | 2–11 | Gemini (Groq de reserva) | ~500/dia por projeto (Flash-Lite) | ✅ |
+| Fotos de comprovante | 1–3 | 2–15 | Gemini (imagem) | o mesmo ~500/dia do projeto | ✅ |
+| Áudios | 1–4 | 2–20 | Groq Whisper | 2.000/dia e 2 h de áudio/hora | ✅ |
+| Texto vindo de áudio que precisa de IA | ~1 | ~5 | Gemini/Groq | idem texto | ✅ |
+| **Total de IA** | — | **≈ 10–50/dia** | — | — | **cabe no gratuito com folga (~10% do Gemini)** |
+
+O limite por pessoa do app (15 fotos e 30 áudios/dia) protege contra abuso e erro. Confira os números reais no
+AI Studio (Gemini) e em *Settings → Limits* (Groq) — o Google não publica o limite exato do Flash-Lite.
 
 ### Desempenho (Lighthouse, celular)
 Medido em `/painel` com build de produção, logado, dados do seed (12 meses), Lighthouse 12.8, perfil móvel
@@ -626,29 +766,29 @@ Limite: a emulação não reproduz a barra dinâmica do Safari, o teclado do iOS
 
 ## 14. Deploy
 
-Passo a passo detalhado (com prints do que clicar) em [`docs/setup-manual.md`](docs/setup-manual.md). Resumo:
+Produção em **[larmais.tech](https://larmais.tech)** com **EasyPanel (Docker) na sua VPS** (ADR-0020). Passo a passo
+completo, na ordem certa e com consultas de verificação, em [`docs/setup-manual.md`](docs/setup-manual.md). Resumo:
 
-1. **Supabase (nuvem, Free, região São Paulo)** → `supabase link` + `supabase db push`.
-   A extensão **pg_cron** é habilitada pela migration 0006 e agenda `gerar-recorrencias` (03:00 BRT).
-2. **Auth**: confirmação de e-mail ligada; senha mínima 8 com letras e números; **troca de e-mail segura**
-   (*Secure email change*) ligada; colar os templates de `supabase/templates/`.
-3. **URLs**: *Site URL* = URL da Vercel; *Redirect URLs* = `https://seu-app.vercel.app/**` e
-   `http://localhost:3000/**`.
-4. **SMTP Brevo** (gratuito): host `smtp-relay.brevo.com`, porta `587`, usuário/chave da Brevo,
-   remetente verificado. Sem isso, e-mails para outras pessoas não chegam.
-5. **Vercel (Hobby)**: importar o repositório e cadastrar `NEXT_PUBLIC_SUPABASE_URL`,
-   `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` e `NEXT_PUBLIC_SITE_URL`.
+1. **DNS** (§K): `A @` e `www` → IP da VPS; registros da Brevo (SPF/DKIM/DMARC).
+2. **VPS + EasyPanel** (§D): 1–2 vCPU, 2 GB RAM, 20 GB, Ubuntu 24.04; app a partir do repositório privado (deploy key
+   só leitura), build pelo `Dockerfile`, variáveis (as `NEXT_PUBLIC_*` entram no build), domínio com HTTPS automático,
+   deploy a cada push na `main`, logs e *Redeploy* para voltar versão.
+3. **Supabase de produção** (§C) — **você aplica**: `supabase link` + `supabase db push`, Auth (Site URL
+   `https://larmais.tech`), templates Lar+, SMTP Brevo, segredos do Vault para o pg_cron, advisors.
+4. **Telegram** (§F): token do @BotFather no EasyPanel, `pnpm telegram set`, `/setuserpic` com
+   `public/brand/telegram-avatar.png`.
+5. **Notificações** (§G): `pnpm vapid` + `CRON_SECRET`.
+6. **Smoke test** (§J): `E2E_BASE_URL=https://larmais.tech pnpm test:smoke`.
 
-**Repositório privado — o que muda**
-- **GitHub Actions (CI)** funciona igual. No plano Free, repositórios privados têm **2.000 minutos/mês**
-  (públicos são ilimitados). Cada execução do CI leva ~5–7 min → cabem ~300 pushes por mês. O limite de
-  gasto padrão é **US$ 0**: se acabar, o CI só para até o mês virar — não há cobrança surpresa.
-  Pushes seguidos cancelam a execução anterior (`concurrency` no workflow), o que economiza minutos.
-- **Vercel Hobby** aceita repositório privado da sua conta pessoal do GitHub: ao importar, autorize o app
-  da Vercel a ver esse repositório. Atenção: no Hobby, com repositório privado, a Vercel **só publica
-  commits cujo autor é você** (o dono da conta). Commits de outra pessoa (ex.: se sua esposa um dia fizer um
-  commit) ficam bloqueados — isso exige o plano Pro. Os commits deste projeto usam o seu e-mail *noreply* do
-  GitHub como autor; se algum deploy aparecer como *Blocked*, veja `docs/setup-manual.md` (seção D).
+```bash
+# imagem local (o CI faz o mesmo a cada push)
+docker build -t larmais --build-arg NEXT_PUBLIC_SUPABASE_URL=... --build-arg NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=... \
+  --build-arg NEXT_PUBLIC_SITE_URL=https://larmais.tech --build-arg NEXT_PUBLIC_VAPID_PUBLIC_KEY=... .
+docker run -p 3000:3000 --env-file .env.producao larmais     # /api/health → {"status":"ok"}
+```
+
+**Repositório privado:** o GitHub Actions continua igual (2.000 min/mês no Free; cada CI ~8–10 min com o job Docker;
+limite de gasto US$ 0 = sem cobrança surpresa). O EasyPanel lê o repositório pela deploy key.
 
 ## 15. Regras de negócio em linguagem simples
 
@@ -755,17 +895,21 @@ de computador (0,1 + 0,2 ≠ 0,3 em ponto flutuante). Datas usam sempre o horár
 
 ## 18. Roadmap, limitações, custos, changelog e licença
 
-**Roadmap**: Fases 0–5 ✅ · Fase 6 (WhatsApp/Telegram) ⏭️ · Fases 7–8 planejadas — detalhes em
+**Roadmap**: Fases 0–6 ✅ · Fase 7 (CSV/OFX) ⏭️ · Fase 8 planejada — detalhes em
 [`docs/roadmap.md`](docs/roadmap.md).
 
 **Limitações conhecidas**
-- Validação em iOS Simulator e iPhone físico ainda pendente (a emulação WebKit cobre o layout).
+- Validação em iOS Simulator e iPhone físico ainda pendente (a emulação WebKit cobre o layout); **push só testável
+  em iPhone real** (roteiro em `docs/setup-manual.md` §G).
+- Acurácia de fotos/áudios medida com dados **sintéticos**; medir com cupons e vozes reais da família.
+- Bot só em conversa privada (grupo da família: avaliar no futuro — ADR-0021). WhatsApp fora por custo.
+- Falha ao processar uma mensagem do Telegram não é reprocessada sozinha (o conteúdo não é guardado): a pessoa é avisada.
 - Gemini gratuito é instável em alguns horários (503/lentidão); o app corta em 6 s e passa ao Groq/parser local.
-- Assistente: estornos no cartão, edição de lançamentos existentes por mensagem e leitura de prints (Fase 7) não são suportados.
+- Assistente: estornos no cartão e edição de lançamentos já existentes por mensagem não são suportados.
 - Comparação com a média de 3 meses só na visão por mês.
 - Meta com imagem própria (upload) ficou para depois: hoje é ícone + cor (evita custo/armazenamento agora).
 - O ritmo de uma meta usa meses fechados: aportes do mês atual mudam "falta" e "por mês", e entram no ritmo no mês seguinte.
-- Sem modo offline ainda (service worker na Fase 8).
+- Sem modo offline ainda (o service worker atual só cuida de push; offline na Fase 8).
 - Trilha de auditoria sem política de retenção (Fase 8).
 - Estornos no cartão e importação de extratos: Fase 7.
 
@@ -773,15 +917,23 @@ de computador (0,1 + 0,2 ≠ 0,3 em ponto flutuante). Datas usam sempre o horár
 | Serviço | Limite gratuito relevante | Risco |
 |---|---|---|
 | Supabase Free | 500 MB de banco; **pausa após 7 dias sem uso** | Reativar no painel |
-| Vercel Hobby | Uso pessoal/não comercial; repositório privado só publica commits do dono | Pro (US$ 20/mês) só se outra pessoa for commitar |
+| VPS + EasyPanel | VPS que você já paga; EasyPanel no plano gratuito (1 projeto) | Se o EasyPanel pedir plano pago, pare e me avise |
 | GitHub Actions (repo privado) | 2.000 min/mês no Free; limite de gasto padrão US$ 0 | CI para até o mês virar (sem cobrança) |
 | Brevo | ~300 e-mails/dia | Mais que suficiente |
-| Domínio próprio | Não é necessário | Opcional (~R$ 40/ano) |
-| WhatsApp (Fase 6) | Respostas a mensagens do usuário são gratuitas | Número dedicado pode ter custo de linha |
+| Domínio larmais.tech | Já registrado | Renovação anual (já sua) |
+| Telegram Bot API | Gratuito, sem limite prático para uma família | — |
+| WhatsApp | **Fora do escopo**: desde 01/10/2026 a Meta cobra respostas acima de 1.000/mês | — |
+| Web Push (Apple/Google/Mozilla) | Gratuito (VAPID) | — |
+| Cloudflare Tunnel (testes locais) | Túnel rápido gratuito, sem conta | — |
 | Gemini (Fase 5) | ~500 pedidos/dia no 3.1 Flash-Lite (por projeto); dados do gratuito podem ser usados pelo Google | Sem cartão cadastrado não há cobrança; o app cai para Groq/local |
-| Groq (Fase 5) | ~30/min e ~1.000/dia (varia por modelo) | Idem |
+| Groq (Fase 5/6) | texto: 30/min, 1.000/dia e 200 mil tokens/dia (gpt-oss-20b); áudio: 20/min, 2.000/dia, 2 h/hora (Whisper) | Idem |
 
 **Changelog resumido**
+- **Fase 6 — Lar+** — nova identidade (logo, ícones, telas de abertura, e-mails); produção em Docker/EasyPanel em
+  larmais.tech (standalone, sem root, healthcheck, CSP/HSTS, smoke test); **@LarMaisBot** no Telegram (webhook com
+  segredo, idempotência, vinculação por código/QR, botões, sessão do próprio usuário); **fotos** de comprovantes e
+  **áudio** no Telegram e no app; **notificações** push/Telegram/central com preferências, silêncio, fila e dead-letter;
+  IA real medida e ajustada (valor fora da mensagem descartado, timeout por provedor, Whisper large-v3).
 - **Fase 5** — assistente no app: parser local + Gemini/Groq atrás de interface (a IA só interpreta), 10 intenções,
   vários itens por mensagem, perguntas com opções, confirmação editável, desfazer em lote, aprendizado de
   categoria, consultas calculadas pelo banco, histórico apagável, cota e rate limit, aviso de privacidade; API

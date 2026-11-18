@@ -1,4 +1,14 @@
-# Design system · "Aurora"
+# Design system · "Aurora" — marca Lar+
+
+## Marca Lar+ (Fase 6)
+- **Conceito:** o contorno de uma **casa** (lar, família) em menta (`primary`) e um **"+" violeta** (`savings`) no
+  lugar da chaminé, subindo — crescimento, metas. Traço único arredondado, legível em 16 px.
+- **Nome:** "Lar" + "+" em violeta; lê-se "Lar Mais". Identificadores técnicos: `larmais`.
+- **Fonte única dos desenhos:** `scripts/brand-mark.mjs` (o componente `src/components/brand/logo.tsx` repete os caminhos
+  com tokens). `pnpm brand` gera: `public/brand/larmais-logo-{dark,light}.svg`, `larmais-mark.svg`, ícones PWA
+  (192/512 + maskable com margem para o recorte), `apple-touch-icon`, favicon (`src/app/icon.svg/.png`), telas de
+  abertura do iPhone (`public/splash/*`) e a foto do bot (`public/brand/telegram-avatar.png`, 512×512).
+- E-mails: cabeçalho com o ícone e "Lar+" (violeta no "+"), fundo grafite.
 
 > Responsável: **Designer Gráfico/UI-UX Sênior**. Implementação: `src/app/globals.css` (tokens),
 > `src/components/ui/*` (componentes base), `src/components/*` (componentes de produto).
