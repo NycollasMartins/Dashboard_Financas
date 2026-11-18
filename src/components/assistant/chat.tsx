@@ -134,7 +134,7 @@ export function AssistantChat({ initial, aiConfigured }: { initial: ChatMessage[
         <div ref={endRef} className="h-px scroll-mb-44 lg:scroll-mb-36" />
       </section>
 
-      <div className="sticky bottom-[calc(5rem+env(safe-area-inset-bottom))] z-10 grid gap-2 bg-background/95 pt-2 pb-1 backdrop-blur lg:bottom-0">
+      <div className="sticky bottom-[calc(5rem+env(safe-area-inset-bottom))] z-10 grid grid-cols-[minmax(0,1fr)] gap-2 bg-background/95 pt-2 pb-1 backdrop-blur lg:bottom-0">
         <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1" aria-label="Exemplos">
           {SUGGESTIONS.map((s) => (
             <button key={s} type="button" disabled={pending} onClick={() => send({ kind: "text", text: s })}
@@ -186,7 +186,7 @@ export function AssistantChat({ initial, aiConfigured }: { initial: ChatMessage[
             autoComplete="off"
             enterKeyHint="send"
             placeholder="Ex.: gastei 45,90 no ifood ontem"
-            className="h-12 min-w-0 flex-1 rounded-2xl border border-input bg-card px-4 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            className="h-12 w-0 min-w-0 flex-1 rounded-2xl border border-input bg-card px-4 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           />
           <Button type="button" size="icon-lg" variant="secondary" className="size-12 rounded-2xl" aria-label="Enviar foto de comprovante"
             aria-expanded={photoMenu} disabled={Boolean(recording)} onClick={() => setPhotoMenu((v) => !v)}>
