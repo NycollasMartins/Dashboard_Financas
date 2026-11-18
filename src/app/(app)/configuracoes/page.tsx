@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { AtSign, KeyRound, LogOut, MessageCircle, Palette, ShieldAlert, User } from "lucide-react";
+import { AtSign, Bell, ChevronRight, KeyRound, LogOut, MessageCircle, Palette, ShieldAlert, User } from "lucide-react";
 import { signOutAction } from "@/app/(auth)/actions";
 import { PageHeader } from "@/components/page-header";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -72,10 +72,19 @@ export default function SettingsPage() {
               <EmailChange />
             </Suspense>
           </Block>
-          <Block icon={MessageCircle} title="WhatsApp e Telegram">
-            <p className="text-sm text-muted-foreground">
-              Na Fase 6 você vai gerar aqui um código para vincular seu número e lançar gastos por mensagem.
-            </p>
+          <Block icon={MessageCircle} title="Canais e notificações">
+            <nav className="-mx-2 grid" aria-label="Canais e notificações">
+              <Link href="/configuracoes/canais" className="flex min-h-12 items-center gap-3 rounded-xl px-2 hover:bg-accent">
+                <MessageCircle className="size-[18px] text-muted-foreground" />
+                <span className="flex-1"><b className="font-medium">Telegram</b><span className="block text-xs text-muted-foreground">Lançar por texto, foto de cupom ou áudio</span></span>
+                <ChevronRight className="size-4 text-muted-foreground" />
+              </Link>
+              <Link href="/configuracoes/notificacoes" className="flex min-h-12 items-center gap-3 rounded-xl px-2 hover:bg-accent">
+                <Bell className="size-[18px] text-muted-foreground" />
+                <span className="flex-1"><b className="font-medium">Notificações</b><span className="block text-xs text-muted-foreground">Push no iPhone/Android, Telegram, horário de silêncio</span></span>
+                <ChevronRight className="size-4 text-muted-foreground" />
+              </Link>
+            </nav>
           </Block>
         </div>
       </div>
