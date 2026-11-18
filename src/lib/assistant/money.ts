@@ -1,7 +1,8 @@
 /*
  * Extração de valores em reais do texto (normalizado) → centavos inteiros.
  * Aceita: "50", "R$ 50,90", "50.90", "1.234,56", "1.500", "50 conto", "50 pila",
- * "1k", "1,5k", "2 mil", "mil e duzentos", "cinquenta reais", "dois mil e quinhentos".
+ * "1k", "1,5k", "2 mil", "mil e duzentos", "cinquenta reais", "dois mil e quinhentos",
+ * fala transcrita (Fase 6): diminutivos ("cinquentinha", "vintinho") e "32 e 50" = R$ 32,50.
  * Ignora números de parcelas ("10x", "em 3 vezes"), dias ("dia 5"), datas (05/11) e %.
  */
 
@@ -24,6 +25,13 @@ function toNumber(raw: string): number {
   if (raw.includes(",")) return Number(raw.replace(",", "."));
   return Number(raw);
 }
+
+// Diminutivos/aumentativos da fala ("cinquentinha no uber", "um vintão").
+const SLANG: Record<string, number> = {
+  cinquinho: 5, dezinho: 10, dezao: 10, vintinho: 20, vintao: 20, trintinha: 30, cinquentinha: 50, cinquentao: 50,
+  cemzinho: 100, cenzinho: 100, centao: 100, milzinho: 1000, milzao: 1000,
+};
+const SLANG_RE = new RegExp(String.raw`\b(${Object.keys(SLANG).join("|")})\b`, "g");
 
 function wordsAmount(text: string): AmountMatch[] {
   const out: AmountMatch[] = [];
@@ -77,10 +85,20 @@ export function findAmounts(text: string): AmountMatch[] {
       value = value * 1000 + (rest ? Number(rest[1]) : 0);
     }
     if (!Number.isFinite(value) || value <= 0) continue;
+    // Fala: "32 e 50" = R$ 32,50 (inteiro sem vírgula/sufixo + "e" + 2 dígitos que não são valor próprio).
+    const cents = !s && /^\d+$/.test(num) ? /^\s+e\s+(\d{2})(?!\d|[,.]\d|\s*(?:x\b|vezes|reais|real|mil|k\b))/.exec(text.slice(end)) : null;
+    if (cents) {
+      const tail = cents[0].length;
+      out.push({ cents: Math.round(value * 100) + Number(cents[1]), start, end: end + tail, raw: text.slice(start, end + tail).trim() });
+      NUMERIC.lastIndex = end + tail;
+      continue;
+    }
     out.push({ cents: Math.round(value * 100), start, end, raw: full.trim() });
   }
   // "1,5k" já coberto; números por extenso.
   for (const w of wordsAmount(text)) if (!out.some((o) => w.start < o.end && o.start < w.end)) out.push(w);
+  SLANG_RE.lastIndex = 0;
+  while ((m = SLANG_RE.exec(text))) out.push({ cents: SLANG[m[1]] * 100, start: m.index, end: m.index + m[0].length, raw: m[0] });
   return out.sort((a, b) => a.start - b.start);
 }
 

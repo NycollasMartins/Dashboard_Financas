@@ -24,6 +24,8 @@ export const assistantConfig = {
   maxImageBytes: num(process.env.ASSISTANT_MAX_IMAGE_BYTES, 4_000_000),
   maxAudioBytes: num(process.env.ASSISTANT_MAX_AUDIO_BYTES, 2_500_000),
   maxAudioSeconds: num(process.env.ASSISTANT_MAX_AUDIO_SECONDS, 60),
+  /** true = todo lançamento vindo de ÁUDIO pede confirmação (padrão: mesmas regras do texto). */
+  confirmAudio: process.env.ASSISTANT_CONFIRM_AUDIO === "true",
 };
 
 export function defaultProviders(): AiParser[] {

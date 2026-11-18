@@ -218,7 +218,8 @@ async function fresh(ctx: EngineCtx & { today: ISODate }, text: string): Promise
     inputKind: ctx.inputKind ?? "text",
   };
   const needsConfirm =
-    toResolve.length > 1 ? "Confira os itens antes de gravar."
+    ctx.inputKind === "audio" && assistantConfig.confirmAudio ? "Entendi pelo áudio — confira antes de gravar."
+    : toResolve.length > 1 ? "Confira os itens antes de gravar."
     : interp.provider !== "local" ? "Entendi com ajuda da IA — confira antes de gravar."
     : interp.confidence < CONFIDENT ? "Não tenho certeza de tudo — confira antes de gravar."
     : null;

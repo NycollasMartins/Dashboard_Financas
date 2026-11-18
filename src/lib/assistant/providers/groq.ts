@@ -14,7 +14,7 @@ export class GroqParser implements AiParser {
   readonly supportsImages = false;
   private readonly key = process.env.GROQ_API_KEY ?? "";
   private readonly model = process.env.GROQ_MODEL || "openai/gpt-oss-20b";
-  private readonly audioModel = process.env.GROQ_AUDIO_MODEL || "whisper-large-v3-turbo";
+  private readonly audioModel = process.env.GROQ_AUDIO_MODEL || "whisper-large-v3";
 
   available() {
     return Boolean(this.key);
@@ -49,7 +49,9 @@ export class GroqParser implements AiParser {
   }
 
   /**
-   * Transcrição com Whisper (gratuito: 20/min, 2.000/dia, 2 h de áudio por hora).
+   * Transcrição com Whisper large-v3 (gratuito: 20/min, 2.000/dia, 2 h de áudio por hora).
+   * Medido (18/11/2026, vozes sintéticas pt-BR): large-v3 92% × turbo 75% de transcrição correta no
+   * essencial, mesmo tempo (~0,5 s) → large-v3 é o padrão.
    * Aceita ogg/opus (voz do Telegram), webm (Chrome) e mp4/m4a (Safari iOS).
    */
   async transcribe(audio: AudioInput, signal?: AbortSignal): Promise<string> {

@@ -90,3 +90,18 @@ describe("períodos de consulta", () => {
     expect(p("quanto gastei em dezembro")).toMatchObject({ from: "2025-12-01", to: "2025-12-31" });
   });
 });
+
+describe("fala transcrita (Fase 6)", () => {
+  it("diminutivos e “32 e 50” = R$ 32,50 (mesmo com pontuação do transcritor)", async () => {
+    const { findAmounts } = await import("../money");
+    const cents = (t: string) => findAmounts(t).map((a) => a.cents);
+    expect(cents("gastei cinquentinha no uber")).toEqual([5000]);
+    expect(cents("um vintinho de lanche")).toEqual([2000]);
+    expect(cents("almoco 32 e 50.")).toEqual([3250]);
+    expect(cents("paguei 12 e 90 na farmacia")).toEqual([1290]);
+    // não confunde com dois valores, parcelas ou decimais
+    expect(cents("30 no uber e 80 no mercado")).toEqual([3000, 8000]);
+    expect(cents("3000 e 10x")).toEqual([300000]);
+    expect(cents("32 e 50,90")).toEqual([3200, 5090]);
+  });
+});

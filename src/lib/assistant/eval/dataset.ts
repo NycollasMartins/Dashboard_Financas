@@ -224,6 +224,11 @@ export const DATASET: [string, Expect][] = [
   ["comprei umas plantas 85", { intent: D, amount: 85 }],
   ["paguei o seguro do carro 2100", { intent: D, amount: 2100 }],
   ["paguei 40 na lavagem do carro", { intent: D, amount: 40 }],
+  // Fase 6 — fala transcrita (áudio): diminutivos e "reais e centavos" falados.
+  ["gastei cinquentinha no uber", { intent: D, amount: 50, category: "Transporte" }],
+  ["almoço 32 e 50", { intent: D, amount: 32.5, category: "Restaurantes e delivery" }],
+  ["um vintinho de lanche", { intent: D, amount: 20 }],
+  ["paguei 12 e 90 na farmácia", { intent: D, amount: 12.9, category: "Saúde" }],
 ];
 
 /*
