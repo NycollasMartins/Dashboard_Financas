@@ -1,4 +1,5 @@
 import {
+  Bell,
   Compass,
   CreditCard,
   Ellipsis,
@@ -32,6 +33,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/metas", label: "Metas", icon: Target },
   { href: "/planejamento", label: "Planejamento", icon: Compass },
   { href: "/assistente", label: "Assistente", icon: MessageCircle },
+  { href: "/notificacoes", label: "Notificações", icon: Bell },
   { href: "/familia", label: "Família", icon: Users },
   { href: "/configuracoes", label: "Configurações", icon: Settings },
 ];

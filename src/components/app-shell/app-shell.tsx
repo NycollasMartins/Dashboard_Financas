@@ -2,8 +2,10 @@ import Link from "next/link";
 import { Logo, LogoMark } from "@/components/brand/logo";
 import { EntrySheetProvider } from "@/components/ledger/entry-sheet";
 import { Celebration } from "@/components/goals/celebration";
+import { NotificationBell } from "@/components/notifications/bell";
 import { PrivacyProvider, PrivacyToggle } from "@/components/privacy/privacy";
 import { getLedgerLookups } from "@/lib/data/ledger";
+import { createClient } from "@/lib/supabase/server";
 import { todayISO } from "@/lib/dates";
 import { getWorkspaceContext } from "@/lib/workspaces/context";
 import { MobileBottomNav, QuickAddButton, SidebarNav } from "./nav";
@@ -12,7 +14,12 @@ import { WorkspaceSwitcher } from "./workspace-switcher";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const { user, workspaces, active } = await getWorkspaceContext();
-  const lookups = await getLedgerLookups(active.id, user.id);
+  const supabase = await createClient();
+  const [lookups, unreadRes] = await Promise.all([
+    getLedgerLookups(active.id, user.id),
+    supabase.from("notifications").select("id", { count: "exact", head: true }).is("read_at", null),
+  ]);
+  const unread = unreadRes.count ?? 0;
 
   return (
     <PrivacyProvider initialHidden={user.hideAmounts}>
@@ -23,9 +30,12 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Sidebar (desktop) */}
       <aside className="sticky top-0 hidden h-dvh flex-col gap-6 border-r bg-sidebar/80 p-4 backdrop-blur lg:flex">
-        <Link href="/painel" className="px-2 pt-1">
-          <Logo />
-        </Link>
+        <div className="flex items-center justify-between gap-2 px-2 pt-1">
+          <Link href="/painel">
+            <Logo />
+          </Link>
+          <NotificationBell unread={unread} />
+        </div>
         <WorkspaceSwitcher workspaces={workspaces} activeId={active.id} />
         <SidebarNav />
         <div className="mt-auto grid gap-3">
@@ -47,6 +57,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         </Link>
         <WorkspaceSwitcher workspaces={workspaces} activeId={active.id} compact />
         <div className="flex items-center">
+          <NotificationBell unread={unread} />
           <PrivacyToggle />
           <UserMenu name={user.fullName} email={user.email} />
         </div>
