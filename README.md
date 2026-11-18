@@ -1,4 +1,13 @@
-# Finanças · dashboard financeiro pessoal e familiar
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="public/brand/larmais-logo-dark.svg">
+    <img src="public/brand/larmais-logo-light.svg" alt="Lar+" width="220">
+  </picture>
+</p>
+
+# Lar+ · finanças da casa e da família
+
+> Lê-se **"Lar Mais"**. Produção: [larmais.tech](https://larmais.tech) · bot: [@LarMaisBot](https://t.me/LarMaisBot)
 
 [![CI](https://github.com/NycollasMartins/Dashboard_Financas/actions/workflows/ci.yml/badge.svg)](https://github.com/NycollasMartins/Dashboard_Financas/actions/workflows/ci.yml)
 ![Next.js](https://img.shields.io/badge/Next.js-16.4-000?logo=nextdotjs)

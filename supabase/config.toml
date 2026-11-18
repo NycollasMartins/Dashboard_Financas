@@ -2,7 +2,7 @@
 # https://supabase.com/docs/guides/local-development/cli/config
 # A string used to distinguish different Supabase projects on the same host. Defaults to the
 # working directory name when running `supabase init`.
-project_id = "dashboard-financas"
+project_id = "larmais"
 
 [api]
 enabled = true
@@ -247,15 +247,15 @@ otp_expiry = 3600
 # IMPORTANTE: no projeto em nuvem, cole o conteúdo destes arquivos em
 # Authentication > Email Templates (ver docs/setup-manual.md).
 [auth.email.template.confirmation]
-subject = "Confirme seu e-mail · Finanças"
+subject = "Confirme seu e-mail · Lar+"
 content_path = "./supabase/templates/confirmation.html"
 
 [auth.email.template.recovery]
-subject = "Redefinir sua senha · Finanças"
+subject = "Redefinir sua senha · Lar+"
 content_path = "./supabase/templates/recovery.html"
 
 [auth.email.template.email_change]
-subject = "Confirme seu novo e-mail · Finanças"
+subject = "Confirme seu novo e-mail · Lar+"
 content_path = "./supabase/templates/email_change.html"
 
 # Uncomment to customize email template

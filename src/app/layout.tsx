@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import { Providers } from "@/components/providers";
+import { APP_DESCRIPTION, APP_NAME, SPLASH_SCREENS } from "@/lib/brand";
 import "./globals.css";
 
 const inter = Inter({ variable: "--font-inter", subsets: ["latin"], display: "swap" });
@@ -8,13 +9,13 @@ const spaceGrotesk = Space_Grotesk({ variable: "--font-space-grotesk", subsets: 
 const jetbrainsMono = JetBrains_Mono({ variable: "--font-jetbrains-mono", subsets: ["latin"], display: "swap" });
 
 export const metadata: Metadata = {
-  title: { default: "Finanças", template: "%s · Finanças" },
-  description: "Dashboard financeiro pessoal e familiar.",
-  applicationName: "Finanças",
+  title: { default: APP_NAME, template: `%s · ${APP_NAME}` },
+  description: APP_DESCRIPTION,
+  applicationName: APP_NAME,
   robots: { index: false, follow: false },
   // iOS: "Adicionar à Tela de Início" abre em tela cheia; a barra de status fica
   // translúcida sobre o app (por isso o header usa padding de safe-area).
-  appleWebApp: { capable: true, title: "Finanças", statusBarStyle: "black-translucent" },
+  appleWebApp: { capable: true, title: APP_NAME, statusBarStyle: "black-translucent", startupImage: SPLASH_SCREENS },
   icons: { apple: "/apple-touch-icon.png" },
   formatDetection: { telephone: false },
 };

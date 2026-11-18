@@ -60,7 +60,12 @@ test("meta tags de PWA/iOS presentes", async ({ page, request }) => {
   await expect(page.locator('meta[name="mobile-web-app-capable"], meta[name="apple-mobile-web-app-capable"]').first()).toHaveAttribute("content", "yes");
   const manifest = await request.get("/manifest.webmanifest");
   expect(manifest.ok()).toBeTruthy();
-  expect((await manifest.json()).display).toBe("standalone");
+  const m = await manifest.json();
+  expect(m.display).toBe("standalone");
+  expect(m.name).toBe("Lar+");
+  expect(m.icons.some((i: { purpose?: string }) => i.purpose === "maskable")).toBe(true);
+  // Tela de abertura do iPhone (PWA)
+  await expect(page.locator('link[rel="apple-touch-startup-image"]').first()).toHaveAttribute("href", /\/splash\//);
   expect((await request.get("/apple-touch-icon.png")).ok()).toBeTruthy();
 });
 

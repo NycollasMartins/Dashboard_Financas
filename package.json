@@ -1,5 +1,5 @@
 {
-  "name": "dashboard-financas",
+  "name": "larmais",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -17,7 +17,7 @@
     "db:types": "supabase gen types typescript --local > src/lib/supabase/database.types.ts",
     "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm test:db && pnpm test:integration",
     "dev:lan": "node scripts/dev-lan.mjs",
-    "icons": "node scripts/generate-icons.mjs",
+    "brand": "node scripts/generate-brand.mjs",
     "test:e2e": "playwright test --project=setup --project=\"Desktop Chrome\" --project=\"Mobile Safari (iPhone 15)\" --project=\"Mobile Safari (iPhone SE)\" --project=\"Mobile Chrome (Android 360x800)\"",
     "test:e2e:ios": "playwright test --project=setup --project=\"Mobile Safari (iPhone 15)\" --project=\"Mobile Safari (iPhone SE)\"",
     "test:e2e:ui": "playwright test --ui",
