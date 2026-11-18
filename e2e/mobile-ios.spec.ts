@@ -97,3 +97,9 @@ test("folha de lançamento cabe na tela e o botão Salvar fica visível", async 
     expect(b!.height).toBeGreaterThanOrEqual(44);
   }
 });
+
+test("CSP local não força HTTPS (o Safari quebraria em http://localhost)", async ({ request, baseURL }) => {
+  const csp = (await request.get("/entrar")).headers()["content-security-policy"] ?? "";
+  expect(csp).toContain("frame-ancestors 'none'");
+  if (baseURL?.startsWith("http://")) expect(csp).not.toContain("upgrade-insecure-requests");
+});
