@@ -93,6 +93,7 @@ export type Database = {
           channel: string
           created_at: string
           id: string
+          input_kind: string
           intent: string
           original_text: string
           provider: string | null
@@ -108,6 +109,7 @@ export type Database = {
           channel?: string
           created_at?: string
           id?: string
+          input_kind?: string
           intent: string
           original_text: string
           provider?: string | null
@@ -123,6 +125,7 @@ export type Database = {
           channel?: string
           created_at?: string
           id?: string
+          input_kind?: string
           intent?: string
           original_text?: string
           provider?: string | null
@@ -149,6 +152,7 @@ export type Database = {
           channel: string
           created_at: string
           id: string
+          input_kind: string
           payload: Json | null
           role: string
           user_id: string
@@ -159,6 +163,7 @@ export type Database = {
           channel?: string
           created_at?: string
           id?: string
+          input_kind?: string
           payload?: Json | null
           role: string
           user_id?: string
@@ -169,6 +174,7 @@ export type Database = {
           channel?: string
           created_at?: string
           id?: string
+          input_kind?: string
           payload?: Json | null
           role?: string
           user_id?: string
@@ -1065,6 +1071,145 @@ export type Database = {
           },
         ]
       }
+      notification_deliveries: {
+        Row: {
+          attempts: number
+          channel: string
+          created_at: string
+          id: string
+          last_error: string | null
+          next_attempt_at: string
+          notification_id: string
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          attempts?: number
+          channel: string
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          next_attempt_at?: string
+          notification_id: string
+          sent_at?: string | null
+          status?: string
+        }
+        Update: {
+          attempts?: number
+          channel?: string
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          next_attempt_at?: string
+          notification_id?: string
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_deliveries_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_prefs: {
+        Row: {
+          enabled: boolean
+          kind: string
+          push: boolean
+          telegram: boolean
+          user_id: string
+        }
+        Insert: {
+          enabled?: boolean
+          kind: string
+          push?: boolean
+          telegram?: boolean
+          user_id?: string
+        }
+        Update: {
+          enabled?: boolean
+          kind?: string
+          push?: boolean
+          telegram?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notification_settings: {
+        Row: {
+          quiet_enabled: boolean
+          quiet_end: string
+          quiet_start: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          quiet_enabled?: boolean
+          quiet_end?: string
+          quiet_start?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          quiet_enabled?: boolean
+          quiet_end?: string
+          quiet_start?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          body: string
+          created_at: string
+          event_key: string
+          id: string
+          kind: string
+          read_at: string | null
+          title: string
+          url: string
+          user_id: string
+          workspace_id: string | null
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          event_key: string
+          id?: string
+          kind: string
+          read_at?: string | null
+          title: string
+          url?: string
+          user_id: string
+          workspace_id?: string | null
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          event_key?: string
+          id?: string
+          kind?: string
+          read_at?: string | null
+          title?: string
+          url?: string
+          user_id?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -1102,6 +1247,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          device_label: string | null
+          endpoint: string
+          failures: number
+          id: string
+          last_success_at: string | null
+          p256dh: string
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          device_label?: string | null
+          endpoint: string
+          failures?: number
+          id?: string
+          last_success_at?: string | null
+          p256dh: string
+          user_id?: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          device_label?: string | null
+          endpoint?: string
+          failures?: number
+          id?: string
+          last_success_at?: string | null
+          p256dh?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       rate_limits: {
         Row: {
@@ -1249,6 +1430,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      telegram_updates: {
+        Row: {
+          attempts: number
+          chat_id: number | null
+          finished_at: string | null
+          kind: string
+          last_error: string | null
+          received_at: string
+          status: string
+          update_id: number
+        }
+        Insert: {
+          attempts?: number
+          chat_id?: number | null
+          finished_at?: string | null
+          kind: string
+          last_error?: string | null
+          received_at?: string
+          status?: string
+          update_id: number
+        }
+        Update: {
+          attempts?: number
+          chat_id?: number | null
+          finished_at?: string | null
+          kind?: string
+          last_error?: string | null
+          received_at?: string
+          status?: string
+          update_id?: number
+        }
+        Relationships: []
       }
       transactions: {
         Row: {
@@ -1760,6 +1974,17 @@ export type Database = {
           },
         ]
       }
+      ops_dead_letters: {
+        Row: {
+          attempts: number | null
+          created_at: string | null
+          last_error: string | null
+          origem: string | null
+          ref: string | null
+          tipo: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       accept_workspace_invite: { Args: { p_token: string }; Returns: string }
@@ -1957,6 +2182,19 @@ export type Database = {
           used_today: number
         }[]
       }
+      claim_notification_deliveries: {
+        Args: { p_limit?: number }
+        Returns: {
+          attempts: number
+          body: string
+          channel: string
+          delivery_id: string
+          telegram_chat_id: string
+          title: string
+          url: string
+          user_id: string
+        }[]
+      }
       consume_channel_link_code: {
         Args: {
           p_channel: Database["public"]["Enums"]["channel_kind"]
@@ -2003,6 +2241,10 @@ export type Database = {
         Returns: number
       }
       delete_my_account: { Args: never; Returns: undefined }
+      finish_notification_delivery: {
+        Args: { p_error?: string; p_id: string; p_result: string }
+        Returns: undefined
+      }
       generate_workspace_recurrences: {
         Args: { p_workspace_id: string }
         Returns: number
