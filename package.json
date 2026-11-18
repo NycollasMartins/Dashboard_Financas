@@ -30,7 +30,9 @@
     "env:gen": "node scripts/prod-secrets.mjs gen",
     "env:copy": "node scripts/prod-secrets.mjs copy",
     "backup:prod": "bash scripts/backup-db.sh prod",
-    "backup:local": "bash scripts/backup-db.sh local"
+    "backup:local": "bash scripts/backup-db.sh local",
+    "env:check": "node scripts/prod-secrets.mjs check",
+    "env:copy-all": "node scripts/prod-secrets.mjs copy-all"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
