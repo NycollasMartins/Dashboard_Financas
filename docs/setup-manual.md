@@ -54,110 +54,142 @@ Change visibility → Make private*.
 
 ## Ordem recomendada para colocar no ar (larmais.tech)
 
-| # | Etapa | Seção | Quanto tempo |
-|---|---|---|---|
-| 1 | Repositório privado | B | 1 min |
-| 2 | DNS do domínio apontando para a VPS | K | 10 min (+ propagação) |
-| 3 | VPS + EasyPanel | D | 30 min |
-| 4 | Supabase de produção (migrations, Auth, Vault/cron) | C | 30 min |
-| 5 | Brevo (SMTP com SPF/DKIM do larmais.tech) | H | 20 min (+ propagação) |
-| 6 | Variáveis no EasyPanel e primeiro deploy | D.4–D.6 | 15 min |
-| 7 | Bot do Telegram: token, webhook, foto de perfil | F | 15 min |
-| 8 | Notificações (VAPID + segredo do cron) | G | 10 min |
-| 9 | Smoke test de produção | J | 5 min |
+Foi assim que fizemos a primeira vez (18/11/2026) — siga nesta ordem:
 
-> **Regra de ouro:** segredos (tokens, chaves, senhas) vão **só** no `.env.local` (seu computador) e nas
-> variáveis do EasyPanel. Nunca em chat, issue, commit ou print.
+| # | Etapa | Seção | Verificação |
+|---|---|---|---|
+| 1 | DNS: `A @` e `www` → VPS | K | `dig +short larmais.tech` |
+| 2 | Supabase: projeto, migrations, Vault/cron | C.1–C.4 | consultas SQL com ✅ |
+| 3 | Brevo (domínio + remetente + chave SMTP) | H | domínio *Authenticated* |
+| 4 | Supabase: Auth, SMTP, modelos Lar+, limites | C.5–C.7 | e-mail de teste com DKIM PASS |
+| 5 | Advisors e primeiro backup | C.8–C.9, M | 0 ERROR · `.enc` gerado |
+| 6 | Variáveis de produção | D.5 + `docs/easypanel-variaveis.md` | `pnpm env:check` tudo ✓ |
+| 7 | EasyPanel: fonte, build, Environment, domínio → **Deploy** | D | `/api/health?deep=1` |
+| 8 | Bot: webhook + foto | F | `pnpm telegram:prod info` |
+| 9 | Notificações e smoke test | G, J | push de teste · smoke verde |
+
+> **Regra de ouro:** segredos (tokens, chaves, senhas) vão **só** no `.env.production.local` (seu Mac, ignorado pelo
+> git) e nas variáveis do EasyPanel. Nunca em chat, issue, commit ou print. Use `pnpm env:copy NOME` para copiar sem exibir.
 
 ---
 
 ## C. Supabase de produção (você aplica; o agente NUNCA executa nada em produção)
 
-Plano **Free**. Cada etapa tem uma **consulta de verificação**: cole no *SQL Editor* do painel e compare.
+Plano **Free**. Cada etapa que muda o banco tem uma **consulta de verificação** (SQL Editor → **+ New query** → **Run**).
 
 ### C.1 Criar o projeto
-<https://supabase.com/dashboard> → **New project** → Plano **Free**, região **South America (São Paulo)**,
-senha do banco forte (guarde num gerenciador de senhas).
+<https://supabase.com/dashboard> → (organização *Personal*, plano **Free**) → **New project**: nome `larmais`,
+**Region South America (São Paulo)**, **Generate a password** → guarde no gerenciador de senhas ("Supabase larmais —
+senha do banco"; não dá para ver de novo; trocar em *Project Settings → Database → Reset database password*) →
+**Create new project**. O **project ref** (20 letras) está em *Project Settings → General → Project ID* e na URL.
 
-### C.2 Enviar as migrations (versionadas em `supabase/migrations/`; o `seed.sql` de teste NÃO vai)
+### C.2 Enviar as migrations (o `seed.sql` de teste NÃO vai)
 ```bash
-supabase login
-supabase link --project-ref SEU_PROJECT_REF     # o "ref" está na URL do painel
-supabase db push --dry-run                      # mostra o que vai aplicar (confira: 10 migrations na 1ª vez)
-supabase db push
+supabase login                                  # autoriza no navegador; token fica no Keychain
+supabase link --project-ref SEU_REF             # pede a senha do banco (não aparece ao colar)
+supabase migration list                         # 10 linhas, coluna Remote vazia
+supabase db push --dry-run                      # mostra o que seria aplicado
+supabase db push                                # Y → "Applying migration…" ×10 → "Finished supabase db push."
+supabase migration list                         # Local = Remote
 ```
-**Verificação:**
+⚠️ **Nunca** rode `supabase db reset --linked` (apaga a produção) nem `db push --include-seed` (dados de teste).
+
+**Verificação (somente leitura) — todas as linhas ✅:**
 ```sql
-select version from supabase_migrations.schema_migrations order by version;
--- esperado: 10 linhas, de 20261117000100 até 20261118001000
-select count(*) as tabelas_sem_rls from pg_tables where schemaname = 'public' and not rowsecurity;
--- esperado: 0
-select extname from pg_extension where extname in ('pg_cron', 'pg_net', 'pgcrypto', 'supabase_vault') order by 1;
--- esperado: pg_cron, pg_net, pgcrypto, supabase_vault
+with checks as (
+  select 1 as n, 'migrations aplicadas' as item, '10' as esperado, (select count(*) from supabase_migrations.schema_migrations)::text as obtido
+  union all select 2, 'última migration', '20261118001000', (select max(version) from supabase_migrations.schema_migrations)
+  union all select 3, 'tabelas no public', '33', (select count(*) from pg_tables where schemaname = 'public')::text
+  union all select 4, 'tabelas SEM RLS', '0', (select count(*) from pg_tables where schemaname = 'public' and not rowsecurity)::text
+  union all select 5, 'views no public', '5', (select count(*) from pg_views where schemaname = 'public')::text
+  union all select 6, 'funções no public', '31', (select count(*) from pg_proc p join pg_namespace s on s.oid = p.pronamespace where s.nspname = 'public')::text
+  union all select 7, 'funções no private', '44', (select count(*) from pg_proc p join pg_namespace s on s.oid = p.pronamespace where s.nspname = 'private')::text
+  union all select 8, 'extensões', 'citext, pg_cron, pg_net, pgcrypto, supabase_vault',
+    (select string_agg(extname, ', ' order by extname) from pg_extension where extname in ('citext','pg_cron','pg_net','pgcrypto','supabase_vault'))
+  union all select 9, 'jobs pg_cron', 'gerar-recorrencias, limpar-assistente, notificacoes', (select string_agg(jobname, ', ' order by jobname) from cron.job where active)
+  union all select 10, 'usuários (sem seed)', '0', (select count(*) from auth.users)::text
+)
+select n, item, esperado, obtido, case when esperado = obtido then '✅' else '❌' end ok from checks order by n;
 ```
+(Os números das linhas 3, 5–7 mudam quando novas migrations entrarem — confira com o mesmo SQL no banco local.)
 
-### C.3 Autenticação
-**Authentication → Sign In / Providers → Email**: *Confirm email* **ligado**; **Secure email change** **ligado**
-(troca de e-mail exige confirmação nos dois endereços). **Password**: mínimo 8, exigir letras e dígitos.
-*(Proteção contra senhas vazadas é recurso do plano Pro — não necessário.)*
+### C.3 Extensões, agendamentos e segredos do Vault
+- **Extensões:** nada a ativar — as migrations ligam `pg_cron` e `pg_net` (veja em *Database → Extensions*).
+- **Agendamentos:** *Integrations → Cron* — horários em **UTC** (Brasília = UTC−3): `gerar-recorrencias` 03:00,
+  `limpar-assistente` 03:30, `notificacoes` a cada 15 min.
+- **Vault** (*Integrations → Vault* — em algumas versões *Project Settings → Vault*) → **Secrets → Add new secret**:
+  - `larmais_cron_secret` = o `CRON_SECRET` (copie sem exibir: `pnpm env:copy CRON_SECRET`);
+  - `larmais_app_url` = `https://larmais.tech` (sem barra no fim).
+  Prefira a tela do Vault ao SQL (`vault.create_secret`) para o segredo não ficar salvo no histórico do SQL Editor.
 
-**Authentication → URL Configuration**
-- **Site URL:** `https://larmais.tech`
-- **Redirect URLs:** `https://larmais.tech/**` e `http://localhost:3000/**`
-
-**Verificação:** abra `https://larmais.tech/recuperar-senha`, peça a redefinição para o seu e-mail e confira que o
-link do e-mail começa com `https://larmais.tech/auth/confirm`.
-
-### C.4 Modelos de e-mail com a marca Lar+
-**Authentication → Emails → Templates**: em **Confirm signup**, **Reset password** e **Change email address**
-cole o HTML de `supabase/templates/confirmation.html`, `recovery.html` e `email_change.html`; assuntos:
-"Confirme seu e-mail · Lar+", "Redefinir sua senha · Lar+", "Confirme seu novo e-mail · Lar+".
-O logo do e-mail é carregado de `https://larmais.tech/icons/icon-192.png` (precisa do app no ar).
-
-### C.5 SMTP (Brevo) — ver seção **H** e depois volte aqui
-**Authentication → Emails → SMTP Settings** → *Enable custom SMTP*: host `smtp-relay.brevo.com`, porta `587`,
-usuário = login SMTP da Brevo, senha = **chave SMTP** da Brevo, remetente `nao-responda@larmais.tech`, nome `Lar+`.
-
-### C.6 Chaves para o app
-**Project Settings → API Keys**: copie **URL do projeto**, **Publishable key** (`sb_publishable_…`) e a
-**Secret key** (`sb_secret_…`). A secret vai **só** em `SUPABASE_SECRET_KEY` no EasyPanel (nunca `NEXT_PUBLIC_`).
-
-### C.7 Agendamentos (pg_cron) e segredos do Vault
-As migrations já criam 3 jobs. O de notificações chama o app pela internet usando 2 segredos do **Vault**
-(nunca no código). No *SQL Editor* (troque o valor pelo seu `CRON_SECRET`, o mesmo do EasyPanel):
+**Verificação (não exibe o segredo):**
 ```sql
-select vault.create_secret('https://larmais.tech', 'larmais_app_url');
-select vault.create_secret('COLE_AQUI_O_CRON_SECRET', 'larmais_cron_secret');
+select n, item, esperado, obtido, case when esperado = obtido then '✅' else '❌' end ok from (
+  select 1 n, 'jobs' item, 'gerar-recorrencias 0 6 * * * | limpar-assistente 30 6 * * * | notificacoes */15 * * * *' esperado,
+         (select string_agg(jobname || ' ' || schedule, ' | ' order by jobname) from cron.job where active) obtido
+  union all select 2, 'segredos', 'larmais_app_url, larmais_cron_secret', (select string_agg(name, ', ' order by name) from vault.decrypted_secrets where name like 'larmais_%')
+  union all select 3, 'URL do app', 'https://larmais.tech', (select decrypted_secret from vault.decrypted_secrets where name = 'larmais_app_url')
+  union all select 4, 'tamanho do CRON_SECRET', '64', (select length(decrypted_secret)::text from vault.decrypted_secrets where name = 'larmais_cron_secret')
+) t order by n;
 ```
-**Verificação:**
-```sql
-select jobname, schedule, active from cron.job order by jobname;
--- esperado: gerar-recorrencias '0 6 * * *' · limpar-assistente '30 6 * * *' · notificacoes '*/15 * * * *' (todos true)
-select name from vault.decrypted_secrets where name like 'larmais_%' order by name;
--- esperado: larmais_app_url, larmais_cron_secret
--- 15–30 min depois do app no ar (só chama quando há notificação pendente):
-select status_code, created from net._http_response order by created desc limit 5;   -- esperado: 200
-select jobname, status, start_time from cron.job_run_details d join cron.job j using (jobid)
- order by start_time desc limit 5;                                                   -- esperado: succeeded
-```
-Para trocar o segredo depois: `select vault.update_secret((select id from vault.secrets where name = 'larmais_cron_secret'), 'NOVO');`
+O job só chama o app quando há notificação pendente — antes de existirem usuários, `net._http_response` fica vazio (normal).
 
-### C.8 Advisors (segurança e desempenho)
-Painel → **Advisors → Security Advisor** e **Performance Advisor** → *Rerun*. Esperado: **nenhum erro (ERROR)**.
-Avisos conhecidos e aceitos: "Leaked password protection disabled" (recurso Pro) e índices "unused" logo após o deploy
-(somem com o uso). Qualquer **ERROR** → me mande o texto do aviso (sem segredos).
+### C.4 Chaves para o app
+*Project Settings → API Keys*: **Project URL**, **Publishable key** (`sb_publishable_…`) e **Secret key**
+(`sb_secret_…`, *Reveal* ou *Create new secret key* `larmais-app`) → `.env.production.local` (D.5). A secret **nunca** em `NEXT_PUBLIC_`.
+
+### C.5 Autenticação
+- **Authentication → URL Configuration:** Site URL `https://larmais.tech` · Redirect URLs **só** `https://larmais.tech/**`
+  (sem localhost em produção — o app volta para `/configuracoes`, `/redefinir-senha` e convites, por isso o `/**` do próprio domínio).
+- **Authentication → Sign In / Providers:** *Allow new users to sign up* ligado → provedor **Email**: *Confirm email* ✅,
+  *Secure email change* ✅, *Secure password change* desligado, senha mínima **8** com **letras e números**
+  (se não estiver aí: *Authentication → Attack Protection*). *Leaked password protection* é do plano Pro → deixar desligado.
+
+### C.6 SMTP (Brevo) — **obrigatório antes dos modelos**
+Desde 03/06/2026 o Supabase **só deixa editar os modelos de e-mail com SMTP próprio** (e o SMTP padrão manda só 2 e-mails/hora).
+Faça a seção **H** (Brevo) e depois: **Authentication → Emails → SMTP Settings → Enable custom SMTP**:
+
+| Campo | Valor |
+|---|---|
+| Sender email address | `nao-responda@larmais.tech` (**não** use Gmail: falha no DMARC e cai no spam) |
+| Sender name | `Lar+` |
+| Host / Port | `smtp-relay.brevo.com` / `587` |
+| Minimum interval per user | `60` |
+| Username | o **Login** mostrado em Brevo → *SMTP & API → SMTP* |
+| Password | a **SMTP key** `xsmtpsib-…` (não a API key `xkeysib-…`) — guarde só no gerenciador de senhas |
+
+**Authentication → Rate Limits:** e-mails = **30/hora** (Brevo Free = 300/dia).
+**Teste:** *Authentication → Users → Add user → Send invitation* para o seu e-mail → chega "Lar+ <nao-responda@larmais.tech>"
+→ Gmail *Mostrar original*: **DKIM PASS e DMARC PASS** → apague o usuário de teste.
+
+### C.7 Modelos de e-mail com a marca Lar+
+**Authentication → Emails → Templates** — para cada um: `pbcopy < arquivo` no Terminal → abrir o modelo → *Subject* →
+corpo (aba *Source*, Cmd+A, Cmd+V) → **Save**:
+
+| Modelo | Subject | Arquivo |
+|---|---|---|
+| Confirm signup | `Confirme seu e-mail · Lar+` | `supabase/templates/confirmation.html` |
+| Reset Password | `Redefinir sua senha · Lar+` | `supabase/templates/recovery.html` |
+| Change Email Address | `Confirme seu novo e-mail · Lar+` | `supabase/templates/email_change.html` |
+
+Não altere `{{ .SiteURL }}`, `{{ .TokenHash }}`, `{{ .RedirectTo }}`. O ícone só aparece no e-mail depois do deploy.
+
+### C.8 Advisors
+*Advisors → Security Advisor* e *Performance Advisor* → **Rerun linter**. Esperado: **0 ERROR**. Aceitos:
+WARN *Leaked Password Protection* (Pro) e *Insufficient MFA* (Fase 8); INFO *RLS Enabled No Policy* em **5 tabelas só do
+servidor** (`bot_sessions`, `channel_link_codes`, `notification_deliveries`, `rate_limits`, `telegram_updates` — **não crie
+policy**), *Unindexed foreign keys* (~57) e *Unused index*. Prévia local: `supabase db advisors --local --type all`
+(**nunca** `--linked` sem saber o que faz). ERROR ou WARN fora dessa lista → investigar.
 
 ### C.9 Dead-letter (falhas visíveis para você)
 ```sql
 select * from public.ops_dead_letters order by created_at desc limit 20;
--- entregas de notificação que desistiram (5 tentativas) e updates do Telegram que falharam. Sem conteúdo de mensagem.
 ```
 
 ### C.10 Usuário do smoke test
-Crie no app (`/cadastro`) uma conta **só para testes**, ex.: `seu-email+smoke@gmail.com` (o Gmail entrega
-no seu e-mail). Não crie família nem dados reais nela. Usada na seção **J**.
+Crie no app (`/cadastro`, depois do deploy) uma conta **só para testes**, ex.: `seu-email+smoke@gmail.com`. Sem família, sem dados reais.
 
-⚠️ O plano Free **pausa o projeto após 7 dias sem uso**; com o uso diário isso não acontece. Se pausar: *Restore*.
+⚠️ O plano Free **pausa o projeto após 7 dias sem uso**; com uso diário não acontece. Se pausar: *Restore*.
 
 ---
 
@@ -190,26 +222,23 @@ Opção recomendada — **deploy key (só leitura, só este repositório)**:
    `git@github.com:NycollasMartins/Dashboard_Financas.git`, branch `main`, cole a chave **privada** `larmais_deploy`.
 4. Apague os arquivos `larmais_deploy*` do computador depois.
 (Alternativa: *Source* **GitHub** com um token *fine-grained* só deste repositório, permissão *Contents: Read*.)
+**Atenção:** o **Auto Deploy** nativo do EasyPanel só existe com *Source* **GitHub**. Com *Source* **Git** + deploy key, use a
+**Deployment Trigger URL** (aba *Deployments*) como webhook no GitHub (*Settings → Webhooks → Add webhook*, evento *push*).
 
 ### D.4 Build
 *Build* → **Dockerfile** (caminho `Dockerfile`). O EasyPanel repassa as variáveis do app como **build args** —
 as `NEXT_PUBLIC_*` precisam existir **antes** do build (elas vão para o navegador).
 
 ### D.5 Variáveis de ambiente (*Environment*)
-| Variável | Valor | Tipo |
-|---|---|---|
-| `NEXT_PUBLIC_SITE_URL` | `https://larmais.tech` | pública (build) |
-| `NEXT_PUBLIC_SUPABASE_URL` | URL do projeto (C.6) | pública (build) |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `sb_publishable_…` | pública (build) |
-| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | de `pnpm vapid` (G) | pública (build) |
-| `SUPABASE_SECRET_KEY` | `sb_secret_…` | **secreta** |
-| `GEMINI_API_KEY` / `GROQ_API_KEY` | suas chaves (E) | **secretas** |
-| `TELEGRAM_BOT_TOKEN` | do @BotFather (F) | **secreta** |
-| `TELEGRAM_WEBHOOK_SECRET` | `openssl rand -hex 32` | **secreta** |
-| `TELEGRAM_BOT_USERNAME` | `LarMaisBot` | — |
-| `VAPID_PRIVATE_KEY` | de `pnpm vapid` | **secreta** |
-| `VAPID_SUBJECT` | `mailto:contato@larmais.tech` | — |
-| `CRON_SECRET` | `openssl rand -hex 32` (o mesmo do Vault, C.7) | **secreta** |
+Lista completa, origem de cada uma e build × runtime: **[`docs/easypanel-variaveis.md`](easypanel-variaveis.md)**.
+```bash
+pnpm env:gen        # gera CRON_SECRET, TELEGRAM_WEBHOOK_SECRET e VAPID em .env.production.local (sem exibir)
+code .env.production.local   # você cola: Supabase (URL, publishable, secret), Gemini, Groq, token do bot
+pnpm env:check      # 13 ✓ + "URL do Supabase = projeto vinculado"; avisa (⚠) se reaproveitou chave de desenvolvimento
+pnpm env:copy-all   # copia as 13 linhas → EasyPanel → app → Environment → colar → Save
+```
+Chaves de produção **separadas** das de desenvolvimento (Gemini em projeto próprio = cota própria; um bot só tem um webhook →
+bot de desenvolvimento separado). As `NEXT_PUBLIC_*` entram no build (`ARG` no Dockerfile): mudou → **novo Deploy**.
 
 ### D.6 Domínio, HTTPS e deploy automático
 1. *Domains* → **Add domain** `larmais.tech` (porta **3000**, HTTPS ligado) e `www.larmais.tech` → redirecionar para
@@ -267,10 +296,11 @@ Desligar a IA a qualquer momento: `ASSISTANT_AI_ENABLED=false`.
    - `/setuserpic` → envie **`public/brand/telegram-avatar.png`** (512×512, a logo do Lar+).
 2. Guarde o **token** no `.env.local` e no EasyPanel (`TELEGRAM_BOT_TOKEN`). **Nunca cole o token em chat.**
 3. Gere o segredo do webhook: `openssl rand -hex 32` → `TELEGRAM_WEBHOOK_SECRET` (EasyPanel). Faça o deploy.
-4. Registre o webhook **depois** do app no ar (rode no seu computador, com os MESMOS valores do EasyPanel):
+4. Registre o webhook **depois** do app no ar — o comando lê o `.env.production.local` (mesmos valores do EasyPanel),
+   sem você digitar o token:
    ```bash
-   TELEGRAM_BOT_TOKEN='...' TELEGRAM_WEBHOOK_SECRET='...' NEXT_PUBLIC_SITE_URL=https://larmais.tech pnpm telegram set
-   pnpm telegram info     # esperado: Webhook https://larmais.tech/api/telegram/webhook · Pendentes 0 · sem "Último erro"
+   pnpm telegram:prod set
+   pnpm telegram:prod info   # esperado: Bot @LarMaisBot · Webhook https://larmais.tech/api/telegram/webhook · Pendentes 0 · sem "Último erro"
    ```
    (O comando também cadastra os comandos /ajuda /resumo /desfazer /espaco /desvincular.)
 5. Teste: app → **Configurações → Canais → Gerar código → Abrir no Telegram → Iniciar**.
@@ -297,22 +327,30 @@ Desligar a IA a qualquer momento: `ASSISTANT_AI_ENABLED=false`.
 
 ## H. Brevo (e-mails do Lar+ com remetente @larmais.tech)
 
-Gratuito: **300 e-mails/dia** (sobra para confirmação, senha e convites).
-1. Crie a conta em <https://www.brevo.com> (sem cartão).
-2. **Senders, Domains & Dedicated IPs → Domains → Add a domain** → `larmais.tech` → escolha autenticar
-   manualmente. A Brevo mostra os registros; crie-os no DNS do registrador (seção K):
-   | Tipo | Nome | Valor (exemplo — use o que a Brevo mostrar) |
-   |---|---|---|
-   | TXT | `@` | `brevo-code:xxxxxxxx` (verificação) |
-   | TXT/CNAME | `brevo1._domainkey` / `brevo2._domainkey` | **DKIM** (copie da Brevo) |
-   | TXT | `@` | **SPF:** `v=spf1 include:spf.brevo.com ~all` (se já houver um SPF, junte num só) |
-   | TXT | `_dmarc` | `v=DMARC1; p=none; rua=mailto:SEU_EMAIL` |
-3. Clique em **Authenticate** até ficar tudo verde (pode levar até algumas horas).
-4. **Senders → Add sender**: nome **Lar+**, e-mail `nao-responda@larmais.tech`.
-5. **SMTP & API → SMTP → Generate a new SMTP key** → use no Supabase (C.5).
+Gratuito: **300 e-mails/dia**, sem cartão.
+1. <https://www.brevo.com> → **Sign up free** (plano Free).
+2. **Settings → Senders, Domains & Dedicated IPs → Domains → Add a domain** → `larmais.tech` → autenticar manualmente.
+3. Na Hostinger (**Domains → DNS → DNS records**), crie **exatamente** o que a Brevo mostrar — no campo **Nome** só o prefixo
+   (a Hostinger completa o domínio):
 
-**Verificação:** `dig +short TXT larmais.tech` (mostra o SPF) · `dig +short TXT brevo1._domainkey.larmais.tech` (DKIM).
-Peça uma redefinição de senha para você mesmo → no Gmail, *Mostrar original* → **SPF: PASS · DKIM: PASS**.
+| Tipo | Nome | Conteúdo (exemplo — copie da sua tela) | TTL |
+|---|---|---|---|
+| TXT | `@` | `brevo-code:…` | 300–3600 |
+| CNAME | `brevo1._domainkey` | `b1.larmais-tech.dkim.brevo.com` | 300–3600 |
+| CNAME | `brevo2._domainkey` | `b2.larmais-tech.dkim.brevo.com` | 300–3600 |
+| TXT | `_dmarc` | `v=DMARC1; p=none; rua=mailto:rua@dmarc.brevo.com` (**um só** `_dmarc`) | 300–3600 |
+
+   **SPF não é necessário** para a Brevo (não mexa em SPF existente). O domínio não tem MX (não recebe e-mail) — ok.
+4. Brevo → **Authenticate this email domain** → *Authenticated*.
+5. **Senders → Add sender:** `Lar+` / `nao-responda@larmais.tech`. O remetente criado no cadastro com o seu Gmail
+   aparece com ⚠️ DKIM "Padrão" e DMARC "Freemail" — **não use esse** no Supabase.
+6. **Settings → SMTP & API → SMTP → Generate a new SMTP key** (`supabase-larmais`) → anote o **Login** → volte ao **C.6**.
+
+**Verificação de DNS (pública):**
+```bash
+for r in "TXT larmais.tech" "CNAME brevo1._domainkey.larmais.tech" "CNAME brevo2._domainkey.larmais.tech" "TXT _dmarc.larmais.tech"; do
+  t=${r%% *}; n=${r#* }; echo "$t $n → $(dig +short +time=5 @8.8.8.8 "$n" "$t")"; done
+```
 
 ---
 
@@ -334,9 +372,13 @@ Ao terminar: `pnpm telegram delete`. O endereço muda a cada execução (rode o 
 
 ## J. Smoke test de produção (depois de cada deploy importante)
 
+Usuário de teste dedicado (C.10). A senha é digitada sem aparecer e não fica no histórico do terminal:
 ```bash
-E2E_BASE_URL=https://larmais.tech SMOKE_EMAIL='seu-email+smoke@gmail.com' SMOKE_PASSWORD='...' pnpm test:smoke
+read -s -p "Senha do usuário de smoke: " SMOKE_PASSWORD; echo; export SMOKE_PASSWORD
+E2E_BASE_URL=https://larmais.tech SMOKE_EMAIL='seu-email+smoke@gmail.com' pnpm test:smoke
+unset SMOKE_PASSWORD
 ```
+Esperado: `3 passed`. Sem `SMOKE_PASSWORD` os 2 primeiros rodam e o terceiro é pulado.
 Confere: saúde (app + Supabase), headers de segurança, manifest Lar+, que o webhook e o disparo de
 notificações **recusam** chamadas sem segredo, login, painel e o assistente (grava e **desfaz** um lançamento de
 R$ 1,00 no usuário de teste). Sem dados reais.
@@ -355,6 +397,29 @@ R$ 1,00 no usuário de teste). Sem dados reais.
 
 Apague registros de "estacionamento" do registrador (A/CNAME padrão) para `@` e `www`.
 **Verificação:** `dig +short larmais.tech` e `dig +short www.larmais.tech` → IP da VPS (propagação: minutos a horas).
+
+---
+
+## M. Backups e restauração (gratuito)
+
+O plano Free **não garante** backups automáticos (diários são do Pro). Rotina:
+- **Todo domingo** e **antes de qualquer migration nova**: `pnpm backup:prod` (Docker aberto; pede a senha do banco e a
+  frase-senha do backup, nada aparece na tela) → gera `backups/AAAA-MM-DD_HHMM-prod.tar.gz.enc` (AES-256; mantém os 8
+  últimos; `backups/` é ignorado pelo git) → **copie para fora do Mac** (iCloud/Google Drive/HD externo).
+- **1× por mês**, teste se abre:
+  ```bash
+  read -s -p "Frase-senha: " BACKUP_PASSPHRASE; echo; export BACKUP_PASSPHRASE
+  openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass env:BACKUP_PASSPHRASE -in backups/NOME.tar.gz.enc | tar -tzf -
+  unset BACKUP_PASSPHRASE      # esperado: roles.sql, schema.sql, data.sql, auth.sql
+  ```
+- O `pg_dump` do Homebrew (v16) **não** serve para o Postgres 17 do Supabase; o script usa o do CLI (Docker).
+
+**Restaurar** (só em emergência, num projeto **novo** — fale comigo antes):
+1. Crie um projeto novo (C.1) e pegue a *connection string* em **Connect → Session pooler** (`postgresql://…`).
+2. Descriptografe: `… openssl enc -d … | tar -xzf - -C /tmp/restore`.
+3. `psql "$URL" -f roles.sql` → `psql "$URL" -f schema.sql` →
+   `psql "$URL" -c "SET session_replication_role = replica" -f data.sql -f auth.sql` (desliga triggers durante a carga).
+4. Refaça C.3 (Vault), C.5–C.7 (Auth/SMTP/modelos) e troque as variáveis do Supabase no EasyPanel → Deploy.
 
 ---
 

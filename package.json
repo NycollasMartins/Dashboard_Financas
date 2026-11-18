@@ -32,7 +32,8 @@
     "backup:prod": "bash scripts/backup-db.sh prod",
     "backup:local": "bash scripts/backup-db.sh local",
     "env:check": "node scripts/prod-secrets.mjs check",
-    "env:copy-all": "node scripts/prod-secrets.mjs copy-all"
+    "env:copy-all": "node scripts/prod-secrets.mjs copy-all",
+    "telegram:prod": "node scripts/telegram.mjs --prod"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

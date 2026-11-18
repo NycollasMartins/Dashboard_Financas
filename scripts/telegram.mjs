@@ -4,6 +4,7 @@
  * (lê .env.local se existir; nunca imprime o token).
  *
  *   pnpm telegram info            → estado do webhook (URL, pendentes, último erro)
+ *   pnpm telegram:prod set|info   → o MESMO, lendo .env.production.local (bot de produção)
  *   pnpm telegram set             → registra {URL}/api/telegram/webhook + comandos
  *   pnpm telegram delete          → remove o webhook (e descarta pendentes)
  *
@@ -11,7 +12,9 @@
  */
 import { readFileSync } from "node:fs";
 
-for (const line of (() => { try { return readFileSync(".env.local", "utf8").split("\n"); } catch { return []; } })()) {
+const PROD = process.argv.includes("--prod");
+const ENV_FILE = PROD ? ".env.production.local" : ".env.local";
+for (const line of (() => { try { return readFileSync(ENV_FILE, "utf8").split("\n"); } catch { return []; } })()) {
   const m = /^([A-Z0-9_]+)=(.*)$/.exec(line.trim());
   if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, "");
 }
@@ -32,7 +35,8 @@ const api = async (method, payload = {}) => {
   return body.result;
 };
 
-const cmd = process.argv[2] ?? "info";
+const cmd = process.argv.slice(2).find((a) => !a.startsWith("--")) ?? "info";
+if (PROD) console.log(`(lendo ${ENV_FILE})`);
 if (cmd === "set") {
   if (!secret || !/^[A-Za-z0-9_-]{24,256}$/.test(secret)) {
     console.error("✗ TELEGRAM_WEBHOOK_SECRET ausente ou inválido (24–256 caracteres A-Z a-z 0-9 _ -). Gere com: openssl rand -hex 32");
