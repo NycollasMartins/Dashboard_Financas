@@ -55,3 +55,33 @@ jobs:
           name: playwright-report
           path: playwright-report
           retention-days: 7
+
+  docker:
+    name: Imagem Docker (build + healthcheck)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build (valores públicos fictícios; segredos nunca entram na imagem)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: larmais:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NEXT_PUBLIC_SUPABASE_URL=https://exemplo.supabase.co
+            NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_ci_placeholder_000000
+            NEXT_PUBLIC_SITE_URL=https://larmais.tech
+            APP_VERSION=${{ github.sha }}
+      - name: Sobe o contêiner e espera ficar saudável
+        run: |
+          docker run -d --name larmais -p 3000:3000 larmais:ci
+          for i in $(seq 1 30); do
+            s=$(docker inspect --format '{{.State.Health.Status}}' larmais); echo "health: $s"
+            [ "$s" = healthy ] && break; sleep 3
+          done
+          curl -fsS http://127.0.0.1:3000/api/health
+          test "$(docker exec larmais whoami)" = nextjs
+          docker images larmais:ci --format 'Tamanho: {{.Size}}'
