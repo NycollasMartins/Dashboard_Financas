@@ -1,14 +1,15 @@
 import { createClient } from "@supabase/supabase-js";
+import { localSupabaseSecret } from "../src/test/local-supabase";
 
 /**
- * Cliente com a chave secreta do Supabase LOCAL (a padrão do CLI, pública na
- * documentação; só funciona no banco local/CI). Usado para preparar dados que
+ * Cliente com a chave secreta do Supabase LOCAL (lida do `supabase status`; só
+ * funciona no banco local/CI). Usado para preparar dados que
  * só o servidor cria (notificações, vínculo do Telegram).
  */
 export function localAdmin() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL ?? "http://127.0.0.1:54321",
-    process.env.SUPABASE_SECRET_KEY || "",
+    localSupabaseSecret(),
     { auth: { persistSession: false } },
   );
 }

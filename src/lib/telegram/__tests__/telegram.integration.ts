@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { MockParser } from "@/lib/assistant/providers/mock";
 import type { Database } from "@/lib/supabase/database.types";
+import { localSupabaseSecret } from "@/test/local-supabase";
 import { tgCallback, tgGroupText, tgPhoto, tgText, tgVoice } from "./fixtures";
 
 /*
@@ -94,7 +95,7 @@ beforeAll(async () => {
   process.env.TELEGRAM_BOT_TOKEN = "123456789:TEST_token_abcdefghijklmnopqrstuvwxyz0123";
   process.env.TELEGRAM_WEBHOOK_SECRET = SECRET;
   // Chave secreta PADRÃO do Supabase local (pública na documentação do CLI; não serve em produção).
-  process.env.SUPABASE_SECRET_KEY = env("SUPABASE_SECRET_KEY") || "";
+  process.env.SUPABASE_SECRET_KEY = env("SUPABASE_SECRET_KEY") || localSupabaseSecret();
   process.env.NEXT_PUBLIC_SUPABASE_URL ||= env("NEXT_PUBLIC_SUPABASE_URL") || "http://127.0.0.1:54321";
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||= env("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
   process.env.NEXT_PUBLIC_SITE_URL ||= "http://localhost:3000";
