@@ -38,7 +38,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         </div>
         <WorkspaceSwitcher workspaces={workspaces} activeId={active.id} />
         <SidebarNav />
-        <div className="mt-auto grid gap-3">
+        <div className="grid shrink-0 gap-3">
           <div className="flex items-center justify-between rounded-xl border border-dashed p-3">
             <span className="text-xs text-muted-foreground">
               Novo lançamento <kbd className="ml-1 rounded border px-1 font-mono text-[10px]">N</kbd>

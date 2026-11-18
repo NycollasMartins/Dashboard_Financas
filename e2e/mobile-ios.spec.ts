@@ -103,3 +103,11 @@ test("CSP local não força HTTPS (o Safari quebraria em http://localhost)", asy
   expect(csp).toContain("frame-ancestors 'none'");
   if (baseURL?.startsWith("http://")) expect(csp).not.toContain("upgrade-insecure-requests");
 });
+
+test("desktop baixo (720 px): botão Novo lançamento da barra lateral fica visível", async ({ page }, info) => {
+  test.skip(info.project.name !== "Desktop Chrome", "só desktop");
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto("/painel");
+  const btn = page.getByRole("button", { name: "Novo lançamento" }).filter({ visible: true }).first();
+  await expect(btn).toBeInViewport();
+});

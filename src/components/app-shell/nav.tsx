@@ -15,7 +15,8 @@ function isActive(pathname: string, href: string) {
 export function SidebarNav() {
   const pathname = usePathname();
   return (
-    <nav aria-label="Principal" className="grid gap-1">
+    // Em telas baixas (notebook 720 px) só o menu rola; o "Novo lançamento" e o usuário ficam sempre visíveis.
+    <nav aria-label="Principal" className="-mx-1 grid min-h-0 flex-1 content-start gap-1 overflow-y-auto px-1">
       {NAV_ITEMS.map(({ href, label, icon: Icon, comingInPhase }) => {
         const active = isActive(pathname, href);
         return (
