@@ -88,3 +88,19 @@ test("atalho no botão + leva ao assistente", async ({ page }, info) => {
   await page.getByRole("link", { name: /Falar com o assistente/ }).click();
   await expect(page).toHaveURL(/\/assistente/);
 });
+
+test("foto e microfone: botões no Assistente (foto passa pelo fluxo e é descartada)", async ({ page }, info) => {
+  test.skip(heavy(info.project.name), "fluxo pesado só no iPhone 15/desktop");
+  await page.getByRole("button", { name: "Enviar foto de comprovante" }).click();
+  await expect(page.getByRole("menuitem", { name: "Tirar foto" })).toBeVisible();
+  // Câmera direta no iPhone: o input da câmera tem capture="environment".
+  await expect(page.getByTestId("photo-camera")).toHaveAttribute("capture", "environment");
+  // Imagem sintética (PNG 1×1) → reduzida no aparelho → servidor. No E2E a IA está desligada.
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
+  await page.getByTestId("photo-file").setInputFiles({ name: "cupom.png", mimeType: "image/png", buffer: png });
+  await expect(conversation(page).getByText("📷 Foto enviada")).toBeVisible();
+  await expect(conversation(page).getByText(/leitura de fotos precisa da IA|Li:|Não consegui ler/).last()).toBeVisible({ timeout: 20_000 });
+  if (info.project.name === "Desktop Chrome") {
+    await expect(page.getByRole("button", { name: "Gravar áudio" })).toBeVisible();
+  }
+});

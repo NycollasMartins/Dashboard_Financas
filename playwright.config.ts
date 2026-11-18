@@ -11,6 +11,8 @@ import { defineConfig, devices } from "@playwright/test";
 const PORT = Number(process.env.PORT ?? 3000);
 const BASE_URL = process.env.E2E_BASE_URL ?? `http://localhost:${PORT}`;
 const AUTH = "e2e/.auth/ana.json";
+/** Smoke test contra produção: E2E_BASE_URL=https://larmais.tech pnpm test:smoke (sem servidor local). */
+const REMOTE = /^https:\/\//.test(BASE_URL);
 
 export default defineConfig({
   testDir: "e2e",
@@ -35,33 +37,37 @@ export default defineConfig({
       name: "Desktop Chrome",
       use: { ...devices["Desktop Chrome"], storageState: AUTH },
       dependencies: ["setup"],
-      testIgnore: /screenshots/,
+      testIgnore: /screenshots|smoke/,
     },
     {
       name: "Mobile Safari (iPhone 15)",
       use: { ...devices["iPhone 15"], storageState: AUTH },
       dependencies: ["setup"],
-      testIgnore: /screenshots/,
+      testIgnore: /screenshots|smoke/,
     },
     {
       name: "Mobile Safari (iPhone SE)",
       use: { ...devices["iPhone SE (3rd gen)"], storageState: AUTH },
       dependencies: ["setup"],
-      testIgnore: /screenshots/,
+      testIgnore: /screenshots|smoke/,
     },
     {
       name: "Mobile Chrome (Android 360x800)",
       use: { ...devices["Pixel 7"], viewport: { width: 360, height: 800 }, storageState: AUTH },
       dependencies: ["setup"],
-      testIgnore: /screenshots/,
+      testIgnore: /screenshots|smoke/,
     },
+    // Smoke de PRODUÇÃO (pnpm test:smoke): usuário de teste dedicado, sem dados reais.
+    { name: "smoke", testMatch: /smoke\.spec\.ts/, use: { ...devices["iPhone 15"] } },
     // Gera as imagens do README (pnpm screenshots). Não roda no `pnpm test:e2e`.
     { name: "screenshots", testMatch: /screenshots\.spec\.ts/, dependencies: ["setup"] },
   ],
-  webServer: {
+  webServer: REMOTE ? undefined : {
     command: process.env.CI ? `pnpm start --port ${PORT}` : `pnpm dev --port ${PORT}`,
     url: `${BASE_URL}/entrar`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    // E2E sem IA real (determinístico, sem gastar cota).
+    env: { ASSISTANT_AI_ENABLED: "false" },
   },
 });

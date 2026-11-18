@@ -38,7 +38,7 @@ const realFetch = globalThis.fetch;
 vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
   const url = String(input instanceof Request ? input.url : input);
   if (!url.startsWith("https://api.telegram.org/")) return realFetch(input, init);
-  if (url.includes("/file/bot")) return new Response(nextFile);
+  if (url.includes("/file/bot")) return new Response(new Uint8Array(nextFile));
   const method = url.split("/").pop()!;
   const body = init?.body ? JSON.parse(String(init.body)) : {};
   sent.push({ method, body });
