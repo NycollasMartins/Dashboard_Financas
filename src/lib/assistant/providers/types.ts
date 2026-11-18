@@ -2,8 +2,8 @@ import type { NameContext } from "../types";
 
 /*
  * Interface de provedor de IA (ADR-0005/0019). Trocar Gemini por Groq (ou
- * outro) não muda nada fora daqui. Já aceita imagens (multimodal) para a
- * leitura de prints da Fase 7 — por enquanto nenhuma tela envia imagem.
+ * outro) não muda nada fora daqui. Fase 6: leitura de comprovantes (imagem) e
+ * transcrição de áudio são métodos opcionais de cada provedor.
  */
 export type AiInput = {
   text: string;
@@ -22,7 +22,18 @@ export interface AiParser {
   available(): boolean;
   /** Devolve o JSON CRU do modelo (o sistema valida com Zod). Lança em erro/timeout. */
   parse(input: AiInput, signal?: AbortSignal): Promise<unknown>;
+  /** Fase 6 — extrai um comprovante de UMA imagem (JSON cru; validação em media/receipt.ts). */
+  extractReceipt?(input: ImageInput, signal?: AbortSignal): Promise<unknown>;
+  /** Fase 6 — transcreve áudio curto (pt-BR). Devolve só o texto. */
+  transcribe?(audio: AudioInput, signal?: AbortSignal): Promise<string>;
 }
+
+export type ImageInput = {
+  image: { mimeType: "image/png" | "image/jpeg" | "image/webp"; base64: string };
+  nowLocal: string;
+  names: NameContext;
+};
+export type AudioInput = { mimeType: string; base64: string; filename: string };
 
 export class ProviderError extends Error {
   constructor(public provider: string, public status: number | null, message: string) {

@@ -12,7 +12,7 @@ export type Lookups = {
   workspaceId: string;
   categories: { id: string; name: string; kind: "income" | "expense" }[];
   accounts: { id: string; name: string }[];
-  cards: { id: string; name: string }[];
+  cards: { id: string; name: string; last4?: string | null }[];
   goals: { id: string; name: string; status: string; reserveAccountId: string | null; planAccountId: string | null }[];
   defaultAccountId: string | null;
 };

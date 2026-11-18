@@ -1,6 +1,7 @@
 import "server-only";
 import { buildUserPayload, SYSTEM_PROMPT } from "../prompt";
-import { ProviderError, type AiInput, type AiParser } from "./types";
+import { TRANSCRIBE_HINT } from "../media/prompts";
+import { ProviderError, type AiInput, type AiParser, type AudioInput } from "./types";
 
 /**
  * Groq (API compatível com OpenAI, modo JSON). Modelo padrão:
@@ -13,6 +14,7 @@ export class GroqParser implements AiParser {
   readonly supportsImages = false;
   private readonly key = process.env.GROQ_API_KEY ?? "";
   private readonly model = process.env.GROQ_MODEL || "openai/gpt-oss-20b";
+  private readonly audioModel = process.env.GROQ_AUDIO_MODEL || "whisper-large-v3-turbo";
 
   available() {
     return Boolean(this.key);
@@ -44,5 +46,29 @@ export class GroqParser implements AiParser {
     } catch {
       throw new ProviderError(this.name, null, "Groq devolveu JSON inválido");
     }
+  }
+
+  /**
+   * Transcrição com Whisper (gratuito: 20/min, 2.000/dia, 2 h de áudio por hora).
+   * Aceita ogg/opus (voz do Telegram), webm (Chrome) e mp4/m4a (Safari iOS).
+   */
+  async transcribe(audio: AudioInput, signal?: AbortSignal): Promise<string> {
+    const form = new FormData();
+    const bytes = Buffer.from(audio.base64, "base64");
+    form.append("file", new Blob([bytes], { type: audio.mimeType.split(";")[0] }), audio.filename);
+    form.append("model", this.audioModel);
+    form.append("language", "pt");
+    form.append("response_format", "json");
+    form.append("temperature", "0");
+    form.append("prompt", TRANSCRIBE_HINT);
+    const res = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+      method: "POST",
+      headers: { authorization: `Bearer ${this.key}` },
+      body: form,
+      signal,
+    });
+    if (!res.ok) throw new ProviderError(this.name, res.status, `Groq (áudio) respondeu ${res.status}`);
+    const body = (await res.json()) as { text?: string };
+    return (body.text ?? "").trim();
   }
 }

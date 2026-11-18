@@ -13,7 +13,8 @@ import type { Provider } from "../types";
  */
 
 export type Channel = "app" | "whatsapp" | "telegram";
-export type ExecMeta = { channel: Channel; originalText: string; batchId: string; provider: Provider | "form"; intent: string };
+export type InputKind = "text" | "photo" | "audio";
+export type ExecMeta = { channel: Channel; originalText: string; batchId: string; provider: Provider | "form"; intent: string; inputKind?: InputKind };
 
 async function logAction(ctx: Ctx, workspaceId: string, meta: ExecMeta, table: string, recordId: string, undoKind: "delete" | "unsettle" | "delete_plan") {
   const { error } = await ctx.supabase.from("assistant_actions").insert({
@@ -26,6 +27,7 @@ async function logAction(ctx: Ctx, workspaceId: string, meta: ExecMeta, table: s
     record_id: recordId,
     undo_kind: undoKind,
     provider: meta.provider,
+    input_kind: meta.inputKind ?? "text",
   });
   if (error) throw error;
 }

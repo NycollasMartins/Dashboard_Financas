@@ -9,7 +9,7 @@ export async function loadLookups(ctx: Ctx, workspaceId: string): Promise<{ lk: 
   const [cats, accs, cards, goals, rules, last] = await Promise.all([
     sb.from("categories").select("id, name, kind").eq("workspace_id", workspaceId).is("archived_at", null),
     sb.from("accounts").select("id, name").eq("workspace_id", workspaceId).is("archived_at", null).order("name"),
-    sb.from("credit_cards").select("id, name").eq("workspace_id", workspaceId).is("archived_at", null).order("name"),
+    sb.from("credit_cards").select("id, name, last4").eq("workspace_id", workspaceId).is("archived_at", null).order("name"),
     sb.from("goal_summaries").select("goal_id, name, status, reserve_account_id, plan_account_id").eq("workspace_id", workspaceId),
     sb.from("category_rules").select("pattern, category_id").eq("workspace_id", workspaceId),
     sb.from("transactions").select("account_id").eq("workspace_id", workspaceId).eq("created_by", ctx.userId)
