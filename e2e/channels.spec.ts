@@ -14,7 +14,7 @@ test("gera código de uso único com QR e link direto para o bot", async ({ page
   const gen = page.getByRole("button", { name: "Gerar código" });
   // Sem token do bot no ambiente de teste o botão fica desligado e o aviso aparece.
   if (await gen.isDisabled()) {
-    await expect(page.getByText(/bot ainda não está configurado/)).toBeVisible();
+    await expect(page.getByText(/bot ainda não está pronto neste servidor/)).toBeVisible();
     return;
   }
   await gen.click();

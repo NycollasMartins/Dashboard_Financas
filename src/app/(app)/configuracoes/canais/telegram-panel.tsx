@@ -8,7 +8,8 @@ import { Button, buttonVariants } from "@/components/ui/button";
 
 type Props = {
   botUsername: string;
-  botConfigured: boolean;
+  /** Variáveis que faltam no servidor, ex.: "TELEGRAM_BOT_TOKEN (ausente)". Vazio = pronto. */
+  botProblems: string[];
   link: { label: string | null; workspaceId: string | null; since: string } | null;
   workspaces: { id: string; name: string }[];
 };
@@ -25,7 +26,8 @@ function useCountdown(until: string | null) {
   return left;
 }
 
-export function TelegramPanel({ botUsername, botConfigured, link, workspaces }: Props) {
+export function TelegramPanel({ botUsername, botProblems, link, workspaces }: Props) {
+  const botConfigured = botProblems.length === 0;
   const [code, setCode] = useState<LinkCode | null>(null);
   const [pending, start] = useTransition();
   const left = useCountdown(code?.expiresAt ?? null);
@@ -45,7 +47,8 @@ export function TelegramPanel({ botUsername, botConfigured, link, workspaces }: 
       </h2>
       {!botConfigured && (
         <p className="mb-3 rounded-xl bg-warning/10 p-3 text-sm text-warning">
-          O bot ainda não está configurado neste servidor (TELEGRAM_BOT_TOKEN). Veja docs/setup-manual.md.
+          O bot ainda não está pronto neste servidor: {botProblems.join(", ")}. Confira as variáveis no EasyPanel
+          (docs/easypanel-variaveis.md) e o diagnóstico em /api/health?deep=1.
         </p>
       )}
 
